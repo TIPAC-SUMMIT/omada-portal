@@ -1,0 +1,255 @@
+'use client'
+
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { Clock, CreditCard, Phone, CheckCircle, AlertCircle, Wifi, Shield, Zap, ArrowRight, Loader2 } from 'lucide-react'
+import { CURRENCY_FORMAT, formatDuration } from '@/lib/constants'
+import { normalizePhoneNumber, validateTanzanianPhone } from '@/lib/utils'
+import type { Package } from '@/lib/types'
+
+const PROVIDER_ICONS: Record<string, string> = {
+  Vodacom: '🔴', Airtel: '🔵', Tigo: '🟡', Halotel: '🟢'
+}
+
+function detectProvider(phone: string): string {
+  const n = phone.replace(/\D/g, '').replace(/^0/, '255')
+  if (/^255(74|75|76)/.test(n)) return 'Vodacom'
+  if (/^255(68|69|78|79)/.test(n)) return 'Airtel'
+  if (/^255(71|65|67)/.test(n)) return 'Tigo'
+  if (/^25562/.test(n)) return 'Halotel'
+  return ''
+}
+
+export default function PackagesInner() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const sessionToken = searchParams.get('token')
+
+  const [packages, setPackages] = useState<Package[]>([])
+  const [selectedPkg, setSelectedPkg] = useState<Package | null>(null)
+  const [phone, setPhone] = useState('')
+  const [phoneError, setPhoneError] = useState('')
+  const [provider, setProvider] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [step, setStep] = useState<'select' | 'pay'>('select')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!sessionToken) { window.location.href = '/guest/login'; return }
+    fetch('/api/portal/packages', { headers: { Authorization: `Bearer ${sessionToken}` } })
+      .then(r => r.json())
+      .then(d => { setPackages(d.data || []); setLoading(false) })
+      .catch(() => { setError('Failed to load packages'); setLoading(false) })
+  }, [sessionToken])
+
+  const handleSelect = async (pkg: Package) => {
+    setError('')
+    try {
+      const res = await fetch('/api/portal/packages/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+        body: JSON.stringify({ packageId: pkg.id })
+      })
+      const data = await res.json()
+      if (!data.success) {
+        setError(data.error || 'Failed to select package. Please try again.')
+        return
+      }
+      setSelectedPkg(pkg)
+      setStep('pay')
+    } catch (e) {
+      setError('Connection error. Please try again.')
+    }
+  }
+
+  const handlePhoneChange = (val: string) => {
+    setPhone(val); setPhoneError(''); setProvider('')
+    if (val.length >= 9) {
+      try {
+        const norm = normalizePhoneNumber(val)
+        if (!validateTanzanianPhone(norm)) { setPhoneError('Enter a valid Tanzanian number') }
+        else setProvider(detectProvider(norm))
+      } catch { setPhoneError('Invalid number format') }
+    }
+  }
+
+  const handlePay = async () => {
+    if (!phone) { setPhoneError('Phone number is required'); return }
+    try {
+      const norm = normalizePhoneNumber(phone)
+      if (!validateTanzanianPhone(norm)) { setPhoneError('Enter a valid Tanzanian number'); return }
+    } catch { setPhoneError('Invalid number format'); return }
+
+    setSubmitting(true); setError('')
+    try {
+      const res = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+        body: JSON.stringify({ phoneNumber: phone })
+      })
+      const data = await res.json()
+      if (!data.success) { setError(data.error || 'Payment failed'); setSubmitting(false); return }
+      window.location.href = `/guest/payment?reference=${data.data.reference}&phone=${encodeURIComponent(phone)}&token=${encodeURIComponent(sessionToken || '')}&pkg=${encodeURIComponent(data.data.packageName || '')}&amount=${data.data.amount || ''}`
+    } catch { setError('Connection error. Please try again.'); setSubmitting(false) }
+  }
+
+  if (loading) return (
+    <div className="min-h-screen bg-gradient-to-br from-brand-900 via-brand-800 to-gray-900 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-12 h-12 animate-spin text-brand-300 mx-auto mb-4" />
+        <p className="text-brand-200">Loading packages…</p>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-brand-900 via-brand-800 to-gray-900">
+      {/* Header */}
+      <div className="px-4 pt-8 pb-6 text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 backdrop-blur rounded-2xl mb-4">
+          <Wifi className="w-8 h-8 text-white" />
+        </div>
+        <h1 className="text-2xl font-bold text-white">TIPAC SUMMIT</h1>
+        <p className="text-brand-200 text-sm mt-1">High-Speed Wi-Fi Access</p>
+
+        {/* Trust badges */}
+        <div className="flex items-center justify-center gap-4 mt-4">
+          <div className="flex items-center gap-1.5 text-brand-300 text-xs">
+            <Shield className="w-3.5 h-3.5" /> Secure Payment
+          </div>
+          <div className="flex items-center gap-1.5 text-brand-300 text-xs">
+            <Zap className="w-3.5 h-3.5" /> Instant Access
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 pb-8 max-w-md mx-auto">
+        {error && (
+          <div className="mb-4 bg-red-500/20 border border-red-400/30 rounded-xl p-3 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-300 shrink-0" />
+            <p className="text-red-200 text-sm">{error}</p>
+          </div>
+        )}
+
+        {step === 'select' && (
+          <>
+            <p className="text-brand-200 text-sm text-center mb-4">Choose your internet package</p>
+            <div className="space-y-3">
+              {packages.map((pkg, i) => {
+                const popular = i === 1
+                return (
+                  <button key={pkg.id} onClick={() => handleSelect(pkg)}
+                    className={`w-full text-left rounded-2xl p-4 transition-all active:scale-95 relative overflow-hidden
+                      ${popular
+                        ? 'bg-brand-500 border-2 border-brand-300 shadow-lg shadow-brand-900/50'
+                        : 'bg-white/10 border border-white/20 hover:bg-white/15'}`}>
+                    {popular && (
+                      <span className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full">
+                        POPULAR
+                      </span>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className={`font-bold text-lg ${popular ? 'text-white' : 'text-white'}`}>{pkg.name}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Clock className={`w-3.5 h-3.5 ${popular ? 'text-brand-100' : 'text-brand-300'}`} />
+                          <span className={`text-sm ${popular ? 'text-brand-100' : 'text-brand-300'}`}>
+                            {formatDuration(pkg.duration_seconds)} of access
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-2xl font-bold ${popular ? 'text-white' : 'text-white'}`}>
+                          TZS {pkg.price_tzs.toLocaleString()}
+                        </p>
+                        <ArrowRight className={`w-4 h-4 ml-auto mt-1 ${popular ? 'text-brand-100' : 'text-brand-400'}`} />
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Supported networks */}
+            <div className="mt-6 bg-white/5 rounded-xl p-4">
+              <p className="text-brand-300 text-xs text-center mb-3">Supported mobile money networks</p>
+              <div className="grid grid-cols-4 gap-2">
+                {['M-Pesa', 'Tigo Pesa', 'Airtel', 'Halopesa'].map(n => (
+                  <div key={n} className="bg-white/10 rounded-lg py-2 px-1 text-center">
+                    <p className="text-white text-xs font-medium">{n}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {step === 'pay' && selectedPkg && (
+          <>
+            {/* Selected package summary */}
+            <div className="bg-white/10 border border-white/20 rounded-2xl p-4 mb-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-brand-300 text-xs uppercase tracking-wide mb-1">Selected Package</p>
+                  <p className="text-white font-bold text-lg">{selectedPkg.name}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Clock className="w-3.5 h-3.5 text-brand-300" />
+                    <span className="text-brand-200 text-sm">{formatDuration(selectedPkg.duration_seconds)}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-white font-bold text-2xl">TZS {selectedPkg.price_tzs.toLocaleString()}</p>
+                  <button onClick={() => { setStep('select'); setSelectedPkg(null) }}
+                    className="text-brand-300 text-xs mt-1 hover:text-white">Change</button>
+                </div>
+              </div>
+            </div>
+
+            {/* Phone input */}
+            <div className="bg-white rounded-2xl p-5 shadow-xl">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Enter your mobile money number
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => handlePhoneChange(e.target.value)}
+                  placeholder="0687 123 456"
+                  className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl text-gray-900 text-lg
+                    focus:outline-none transition-colors
+                    ${phoneError ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-brand-500'}`}
+                  disabled={submitting}
+                />
+                {provider && !phoneError && (
+                  <span className="absolute right-3 top-3 text-sm font-medium text-green-600">
+                    {PROVIDER_ICONS[provider]} {provider}
+                  </span>
+                )}
+              </div>
+              {phoneError && <p className="text-red-500 text-sm mt-1.5">{phoneError}</p>}
+              <p className="text-gray-400 text-xs mt-2">Format: 0687 123 456 or 255687123456</p>
+
+              <button
+                onClick={handlePay}
+                disabled={submitting || !!phoneError || phone.length < 9}
+                className="w-full mt-4 bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300
+                  text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-lg">
+                {submitting
+                  ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing…</>
+                  : <><CreditCard className="w-5 h-5" /> Pay TZS {selectedPkg.price_tzs.toLocaleString()}</>}
+              </button>
+
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <Shield className="w-3.5 h-3.5 text-gray-400" />
+                <p className="text-gray-400 text-xs">Secured by MalipoPay · TIPAC SUMMIT</p>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
