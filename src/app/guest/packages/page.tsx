@@ -1,6 +1,8 @@
 import { Suspense } from 'react'
 import PackagesInner from './_inner'
 
+export const dynamic = 'force-dynamic'
+
 export default function PackageSelectionPage() {
   return (
     <Suspense fallback={

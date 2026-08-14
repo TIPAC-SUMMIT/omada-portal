@@ -1,6 +1,8 @@
 import { Suspense } from 'react'
 import PaymentInner from './_inner'
 
+export const dynamic = 'force-dynamic'
+
 export default function PaymentStatusPage() {
   return (
     <Suspense fallback={

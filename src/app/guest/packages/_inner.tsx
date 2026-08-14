@@ -36,7 +36,13 @@ export default function PackagesInner() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!sessionToken) { window.location.href = '/guest/login'; return }
+    if (!sessionToken) {
+      // Wait a tick in case searchParams hasn't hydrated yet
+      const timer = setTimeout(() => {
+        if (!sessionToken) window.location.href = '/guest/login'
+      }, 500)
+      return () => clearTimeout(timer)
+    }
     fetch('/api/portal/packages', { headers: { Authorization: `Bearer ${sessionToken}` } })
       .then(r => r.json())
       .then(d => { setPackages(d.data || []); setLoading(false) })

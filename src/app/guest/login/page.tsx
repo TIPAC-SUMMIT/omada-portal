@@ -1,6 +1,8 @@
 import { Suspense } from 'react'
 import GuestLoginInner from './_inner'
 
+export const dynamic = 'force-dynamic'
+
 export default function GuestLoginPage() {
   return (
     <Suspense fallback={
