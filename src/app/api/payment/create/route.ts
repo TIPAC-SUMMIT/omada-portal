@@ -112,10 +112,10 @@ export async function POST(request: NextRequest) {
         ? new Date(existingTransaction.expires_at) < new Date()
         : false
 
-      // Also treat as expired if older than 10 minutes with no webhook yet
+      // Also treat as expired if older than 20 minutes with no webhook yet
       const createdAt = new Date(existingTransaction.created_at)
       const ageMinutes = (Date.now() - createdAt.getTime()) / 60000
-      const isStale = ageMinutes > 10
+      const isStale = ageMinutes > 20
 
       if (!isExpired && !isStale) {
         return Response.json(apiError('A payment is already in progress. Please wait or try again in a few minutes.', 'PAYMENT_ALREADY_INITIATED'), {

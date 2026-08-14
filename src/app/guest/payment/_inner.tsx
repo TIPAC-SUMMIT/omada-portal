@@ -39,9 +39,9 @@ export default function PaymentInner() {
         setMessage(data.data.message || '')
         if (data.data.redirectUrl) setRedirectUrl(data.data.redirectUrl)
       }
-      // Continue polling while pending
+      // Continue polling while pending — up to 15 minutes (300 attempts x 3 sec)
       const pending = ['PENDING', 'PAYMENT_INITIATED', 'PAYMENT_SUCCESS', 'OMADA_AUTHORIZING']
-      if (pending.includes(data.data?.status) && countRef.current < 60) {
+      if (pending.includes(data.data?.status) && countRef.current < 300) {
         countRef.current++
         pollRef.current = setTimeout(poll, 3000)
       }
@@ -204,8 +204,8 @@ export default function PaymentInner() {
             <RefreshCw className="w-3.5 h-3.5" /> Check status manually
           </button>
 
-          {/* After 2 minutes show cancel option */}
-          {waitSeconds > 120 && (
+      {/* After 3 minutes show cancel option */}
+          {waitSeconds > 180 && (
             <div className="mt-4 pt-4 border-t border-gray-100">
               <p className="text-gray-400 text-xs mb-2">Taking too long? You can go back and try again.</p>
               <button

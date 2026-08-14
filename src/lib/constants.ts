@@ -12,7 +12,7 @@ export const PORTAL_SESSION_EXPIRY_MINUTES = 30
 // Payment
 // ============================================================================
 
-export const PAYMENT_TIMEOUT_MINUTES = 5
+export const PAYMENT_TIMEOUT_MINUTES = 15
 
 // Transaction reference format: WIFI-YYYYMMDD-XXXXXXXX
 export const TRANSACTION_REFERENCE_PREFIX = 'WIFI'
