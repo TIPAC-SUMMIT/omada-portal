@@ -53,13 +53,16 @@ function buildBaseUrl(controller: OmadaController): string {
   return `${connectorUrl}/${omadacId}/api/v2`
 }
 
-// Node.js fetch with self-signed cert support
-async function omadaFetch(url: string, options: RequestInit & { cookie?: string } = {}): Promise<Response> {
-  // In Node 18+ we can pass a custom agent via undici dispatcher
-  // For self-signed certs on local OC200 we use NODE_TLS_REJECT_UNAUTHORIZED
-  // For cloud connector (euw1-api-...) the cert is valid — no issue
-  return fetch(url, {
+// Node.js fetch — handles OC200 redirects that point to local IP
+// When OC200 redirects to https://192.168.0.56:443/..., we rewrite to tunnel URL
+async function omadaFetch(
+  url: string,
+  options: RequestInit & { cookie?: string } = {},
+  tunnelUrl?: string
+): Promise<Response> {
+  const res = await fetch(url, {
     ...options,
+    redirect: 'manual',   // don't auto-follow — we need to rewrite redirects
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -67,6 +70,23 @@ async function omadaFetch(url: string, options: RequestInit & { cookie?: string 
       ...(options.headers || {})
     }
   })
+
+  // If OC200 redirects (301/302/307/308), rewrite the location to use tunnel URL
+  if ([301, 302, 307, 308].includes(res.status)) {
+    const location = res.headers.get('location') || ''
+    if (location && tunnelUrl) {
+      // Replace local IP with tunnel URL
+      const rewritten = location
+        .replace(/https?:\/\/192\.168\.\d+\.\d+(:\d+)?/, tunnelUrl)
+        .replace(/https?:\/\/localhost(:\d+)?/, tunnelUrl)
+
+      console.log(JSON.stringify({ level: 'info', event: 'OMADA_REDIRECT_REWRITE', from: location, to: rewritten }))
+
+      return omadaFetch(rewritten, options, tunnelUrl)
+    }
+  }
+
+  return res
 }
 
 // ── Real Implementation ────────────────────────────────────────────────────────
@@ -83,13 +103,14 @@ class RealOmadaService implements IOmadaService {
     }
 
     const loginUrl = `${baseUrl}/hotspot/login`
+    const tunnelUrl = controller.controller_url || ''
 
     console.log(JSON.stringify({ level: 'info', event: 'OMADA_LOGIN', url: loginUrl, username }))
 
     const res = await omadaFetch(loginUrl, {
       method: 'POST',
       body: JSON.stringify({ name: username, password })
-    })
+    }, tunnelUrl)
 
     const text = await res.text()
     let body: any
@@ -145,6 +166,7 @@ class RealOmadaService implements IOmadaService {
       const session = await this.getSession(controller)
       const baseUrl = buildBaseUrl(controller)
       const authUrl = `${baseUrl}/hotspot/extPortal/auth`
+      const tunnelUrl = controller.controller_url || ''
 
       // time = expiration timestamp in milliseconds
       const expireTimeMs = Date.now() + request.duration * 1000
@@ -179,7 +201,7 @@ class RealOmadaService implements IOmadaService {
           'Csrf-Token': session.csrfToken
         } as any,
         body: JSON.stringify(authPayload)
-      })
+      }, tunnelUrl)
 
       const text = await res.text()
       let body: any
@@ -251,6 +273,7 @@ class RealOmadaService implements IOmadaService {
     try {
       const session = await this.getSession(controller)
       const baseUrl = buildBaseUrl(controller)
+      const tunnelUrl = controller.controller_url || ''
 
       // Revoke by authorizing with time = 0 (or current time = immediate expiry)
       const authUrl = `${baseUrl}/hotspot/extPortal/auth`
@@ -263,11 +286,11 @@ class RealOmadaService implements IOmadaService {
         } as any,
         body: JSON.stringify({
           clientMac,
-          site: 'AASAM SITE',
+          site: ENV.OMADA_SITE_NAME || 'AASAM SITE',
           time: Date.now(),   // expire immediately
           authType: 4
         })
-      })
+      }, tunnelUrl)
 
       const body = await res.json()
       return { success: body.errorCode === 0 }
