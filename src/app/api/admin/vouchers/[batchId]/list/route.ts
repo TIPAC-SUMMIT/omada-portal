@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, { params }: { params: { batchId:
       .order('created_at')
 
     if (error) throw error
-    return Response.json(apiSuccess(data))
+    return Response.json(apiSuccess(data ?? []))
   } catch (e) {
     logError(e, 'GET /admin/vouchers/[batchId]/list')
     return Response.json(apiError('Failed to load vouchers'), { status: HTTP_STATUS.INTERNAL_SERVER_ERROR })
