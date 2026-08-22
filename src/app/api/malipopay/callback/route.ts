@@ -163,6 +163,33 @@ export async function POST(request: NextRequest) {
 
   // ── 9. Route based on payment outcome ─────────────────────────────────────
   if (mappedStatus === 'PAYMENT_SUCCESS') {
+
+  // ── Assign voucher to this transaction ─────────────────────────────────────
+  let voucherCode: string | null = null
+  try {
+    const vRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/vouchers/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transaction_id: transaction.id,
+        site_id: transaction.site_id,
+        price_tzs: transaction.amount_tzs
+      })
+    })
+    const vData = await vRes.json()
+    if (vData.success) {
+      voucherCode = vData.data.code
+      // Store voucher code in transaction for status polling
+      await supabaseAdmin.from('payment_transactions')
+        .update({ error_code: null, error_message: voucherCode ? `VOUCHER:${voucherCode}` : null })
+        .eq('id', transaction.id)
+    } else {
+      console.warn(JSON.stringify({ level: 'warn', event: 'VOUCHER_ASSIGN_FAILED', error: vData.error, reference: transaction.reference }))
+    }
+  } catch (vErr) {
+    console.warn(JSON.stringify({ level: 'warn', event: 'VOUCHER_ASSIGN_ERROR', error: String(vErr) }))
+  }
+
     await handlePaymentSuccess(transaction, malipoReference, requestId)
   } else {
     // Payment failed/cancelled — reset session to PACKAGE_SELECTED so guest can retry

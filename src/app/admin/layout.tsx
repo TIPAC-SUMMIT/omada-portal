@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, MapPin, Package, CreditCard, Monitor, ClipboardList, LogOut, Menu, X, Wifi } from 'lucide-react'
+import { LayoutDashboard, MapPin, Package, CreditCard, Monitor, ClipboardList, LogOut, Menu, X, Wifi, Ticket } from 'lucide-react'
 
 const navItems = [
   { href: '/admin/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/admin/packages',     icon: Package,          label: 'Packages' },
   { href: '/admin/transactions', icon: CreditCard,       label: 'Transactions' },
   { href: '/admin/sessions',     icon: Monitor,          label: 'Active Sessions' },
+  { href: '/admin/vouchers',     icon: Ticket,           label: 'Vouchers' },
   { href: '/admin/audit-logs',   icon: ClipboardList,    label: 'Audit Logs' },
 ]
 
