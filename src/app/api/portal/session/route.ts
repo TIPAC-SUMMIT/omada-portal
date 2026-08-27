@@ -88,8 +88,7 @@ export async function POST(request: NextRequest) {
         radio_id: params.radioId || null,
         vid: params.vid || null,
         redirect_url: params.redirectUrl || null,
-        status: 'CREATED',
-        client_ip: clientIp,
+        site_omada_id: (params as any).site || null,
         user_agent: userAgent,
         expires_at: expiresAt
       })

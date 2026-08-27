@@ -265,7 +265,9 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
       duration: transaction.duration_seconds,
       apMac: transaction.ap_mac,
       ssidName: transaction.ssid_name,
-      radioId: transaction.radio_id || '0'
+      radioId: transaction.radio_id || '0',
+      clientIp: transaction.client_ip || undefined,
+      site: transaction.site_omada_id || transaction.ssid_name  // v6.2.10 site ID
     } as any)
 
     if (!authResult.success) {

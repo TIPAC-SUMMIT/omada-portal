@@ -171,23 +171,30 @@ class RealOmadaService implements IOmadaService {
       // time = expiration timestamp in milliseconds
       const expireTimeMs = Date.now() + request.duration * 1000
 
-      // Site name must match exactly what's in the controller
-      const siteName = ENV.OMADA_SITE_NAME || 'AASAM SITE'
+      // v6.2.10 — site param is SITE_ID, clientIp is new required field
+      const siteId = (request as any).site || ENV.OMADA_SITE_NAME || 'AASAM SITE'
 
-      const authPayload = {
+      const authPayload: Record<string, any> = {
         clientMac: request.clientMac,
-        apMac: (request as any).apMac || '',
-        ssidName: (request as any).ssidName || '',
-        radioId: (request as any).radioId ?? '0',
-        site: siteName,
-        time: expireTimeMs,
-        authType: 4
+        clientIp:  (request as any).clientIp  || undefined,
+        apMac:     (request as any).apMac     || undefined,
+        ssidName:  (request as any).ssidName  || undefined,
+        radioId:   (request as any).radioId   !== undefined ? (request as any).radioId : undefined,
+        site:      siteId,
+        time:      expireTimeMs,   // milliseconds
+        authType:  4,
+        originUrl: ''
       }
+
+      // Remove undefined/empty optional fields
+      Object.keys(authPayload).forEach(k => {
+        if (authPayload[k] === undefined || authPayload[k] === '') delete authPayload[k]
+      })
 
       console.log(JSON.stringify({
         level: 'info', event: 'OMADA_AUTH_REQUEST',
         clientMac: request.clientMac,
-        site: siteName,
+        site: siteId,
         expireTimeMs,
         durationSeconds: request.duration
       }))
