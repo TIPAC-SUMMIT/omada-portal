@@ -27,6 +27,15 @@ export interface GeneratedVoucher {
   code: string
 }
 
+export interface OmadaClientAuthorization {
+  clientMac: string
+  apMac: string
+  ssidName: string
+  radioId: string
+  site: string
+  durationSeconds: number
+}
+
 let tokenCache: { value: string; expiresAt: number } | null = null
 
 function apiUrl(path: string): string {
@@ -168,4 +177,75 @@ export async function listOmadaSites(): Promise<OmadaSite[]> {
   }>(response)
 
   return result?.data ?? []
+}
+
+async function controllerRequest<T>(
+  path: string,
+  init: RequestInit,
+  cookies?: string
+): Promise<{ data: T; cookies: string }> {
+  const response = await fetch(
+    `${ENV.OMADA_CONTROLLER_URL.replace(/\/$/, '')}/${encodeURIComponent(ENV.OMADA_CONTROLLER_ID)}${path}`,
+    {
+      ...init,
+      headers: {
+        Accept: 'application/json',
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(cookies ? { Cookie: cookies } : {}),
+        ...init.headers,
+      },
+      signal: AbortSignal.timeout(15_000),
+    }
+  )
+  const text = await response.text()
+  let body: OmadaApiResponse<T>
+  try {
+    body = JSON.parse(text) as OmadaApiResponse<T>
+  } catch {
+    throw new Error(`Omada controller returned non-JSON response (${response.status})`)
+  }
+  if (!response.ok || body.errorCode !== 0) {
+    throw new Error(body.msg || `Omada controller request failed (${response.status})`)
+  }
+  const setCookies = response.headers.getSetCookie?.() ?? []
+  const receivedCookies = setCookies.map(value => value.split(';', 1)[0]).join('; ')
+  return { data: body.result as T, cookies: [cookies, receivedCookies].filter(Boolean).join('; ') }
+}
+
+export async function authorizeOmadaClient(input: OmadaClientAuthorization): Promise<void> {
+  if (!ENV.OMADA_CONTROLLER_URL || !ENV.OMADA_CONTROLLER_ID ||
+      !ENV.OMADA_OPERATOR_USERNAME || !ENV.OMADA_OPERATOR_PASSWORD) {
+    throw new Error('OMADA_CONTROLLER_URL, OMADA_CONTROLLER_ID and hotspot operator credentials are required')
+  }
+
+  const login = await controllerRequest<{ token: string }>(
+    '/api/v2/hotspot/login',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        name: ENV.OMADA_OPERATOR_USERNAME,
+        password: ENV.OMADA_OPERATOR_PASSWORD,
+      }),
+    }
+  )
+  if (!login.data?.token) throw new Error('Omada controller did not return a CSRF token')
+
+  const expiryMicros = (Date.now() + input.durationSeconds * 1000) * 1000
+  await controllerRequest(
+    '/api/v2/hotspot/extPortal/auth',
+    {
+      method: 'POST',
+      headers: { 'Csrf-Token': login.data.token },
+      body: JSON.stringify({
+        clientMac: input.clientMac,
+        apMac: input.apMac,
+        ssidName: input.ssidName,
+        radioId: input.radioId,
+        site: input.site,
+        time: expiryMicros,
+        authType: 4,
+      }),
+    },
+    login.cookies
+  )
 }

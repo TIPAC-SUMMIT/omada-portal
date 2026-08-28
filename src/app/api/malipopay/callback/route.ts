@@ -18,7 +18,7 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { malipoPayService, mapMalipoPayStatus } from '@/lib/services/malipopay'
-import { createOmadaVoucher } from '@/lib/services/omada-open-api'
+import { authorizeOmadaClient, createOmadaVoucher } from '@/lib/services/omada-open-api'
 import { apiSuccess, apiError, logError, now } from '@/lib/utils'
 import { HTTP_STATUS } from '@/lib/constants'
 
@@ -240,6 +240,26 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
       transaction.reference,
       transaction.duration_seconds
     )
+
+    const { data: portalSession } = await supabaseAdmin
+      .from('portal_sessions')
+      .select('client_mac, ap_mac, ssid_name, site_name, radio_id')
+      .eq('id', transaction.portal_session_id)
+      .single()
+
+    if (!portalSession?.client_mac || !portalSession.ap_mac || !portalSession.ssid_name ||
+        !portalSession.site_name || !portalSession.radio_id) {
+      throw new Error('Missing Omada client context for authorization')
+    }
+
+    await authorizeOmadaClient({
+      clientMac: portalSession.client_mac,
+      apMac: portalSession.ap_mac,
+      ssidName: portalSession.ssid_name,
+      radioId: portalSession.radio_id,
+      site: portalSession.site_name,
+      durationSeconds: transaction.duration_seconds,
+    })
 
     // Mark transaction AUTHORIZED
     await supabaseAdmin

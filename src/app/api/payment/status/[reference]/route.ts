@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { malipoPayService } from '@/lib/services/malipopay'
-import { createOmadaVoucher } from '@/lib/services/omada-open-api'
+import { authorizeOmadaClient, createOmadaVoucher } from '@/lib/services/omada-open-api'
 import { apiSuccess, apiError, logError } from '@/lib/utils'
 import { HTTP_STATUS } from '@/lib/constants'
 
@@ -69,6 +69,23 @@ export async function GET(
           if (claimed) {
             try {
               const voucher = await createOmadaVoucher(claimed.reference, claimed.duration_seconds)
+              const { data: portalSession } = await supabaseAdmin
+                .from('portal_sessions')
+                .select('client_mac, ap_mac, ssid_name, site_name, radio_id')
+                .eq('id', claimed.portal_session_id)
+                .single()
+              if (!portalSession?.client_mac || !portalSession.ap_mac || !portalSession.ssid_name ||
+                  !portalSession.site_name || !portalSession.radio_id) {
+                throw new Error('Missing Omada client context for authorization')
+              }
+              await authorizeOmadaClient({
+                clientMac: portalSession.client_mac,
+                apMac: portalSession.ap_mac,
+                ssidName: portalSession.ssid_name,
+                radioId: portalSession.radio_id,
+                site: portalSession.site_name,
+                durationSeconds: claimed.duration_seconds,
+              })
               await supabaseAdmin.from('payment_transactions').update({
                 status: 'AUTHORIZED',
                 voucher_code: voucher.code,
