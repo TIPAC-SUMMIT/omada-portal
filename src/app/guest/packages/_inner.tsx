@@ -24,6 +24,7 @@ export default function PackagesInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const sessionToken = searchParams.get('token')
+  const hasVoucherLogin = Boolean(searchParams.get('tp'))
 
   const [packages, setPackages] = useState<Package[]>([])
   const [selectedPkg, setSelectedPkg] = useState<Package | null>(null)
@@ -98,6 +99,15 @@ export default function PackagesInner() {
       if (!data.success) { setError(data.error || 'Malipo yameshindikana.'); setSubmitting(false); return }
       window.location.href = `/guest/payment?reference=${data.data.reference}&phone=${encodeURIComponent(phone)}&token=${encodeURIComponent(sessionToken || '')}&pkg=${encodeURIComponent(data.data.packageName || '')}&amount=${data.data.amount || ''}`
     } catch { setError('Tatizo la kuunganisha. Jaribu tena.'); setSubmitting(false) }
+  }
+
+  const handleVoucher = () => {
+    const params = new URLSearchParams()
+    for (const key of ['clientMac', 'apMac', 'ssidName', 'site', 't', 'gatewayMac', 'radioId', 'vid', 'redirectUrl', 'tp']) {
+      const value = searchParams.get(key)
+      if (value) params.set(key, value)
+    }
+    window.location.href = `/portal?${params.toString()}`
   }
 
   if (loading) return (
@@ -188,6 +198,16 @@ export default function PackagesInner() {
                 ))}
               </div>
             </div>
+            {hasVoucherLogin && (
+              <div className="mt-4 rounded-xl border border-yellow-300/30 bg-yellow-400/10 p-4 text-center">
+                <p className="text-white text-sm font-semibold">Tayari una vocha?</p>
+                <p className="text-brand-200 text-xs mt-1">Ingiza namba ya vocha uliyonunua dukani.</p>
+                <button onClick={handleVoucher}
+                  className="mt-3 rounded-lg bg-yellow-400 px-4 py-2 text-sm font-bold text-yellow-950 hover:bg-yellow-300">
+                  Tumia vocha
+                </button>
+              </div>
+            )}
           </>
         )}
 
@@ -247,6 +267,13 @@ export default function PackagesInner() {
                   ? <><Loader2 className="w-5 h-5 animate-spin" /> Inashughulikia…</>
                   : <><CreditCard className="w-5 h-5" /> Lipa TZS {selectedPkg.price_tzs.toLocaleString()}</>}
               </button>
+
+              {hasVoucherLogin && (
+                <button onClick={handleVoucher}
+                  className="w-full mt-3 border-2 border-brand-200 text-brand-700 font-semibold py-3 rounded-xl transition-colors hover:bg-brand-50">
+                  Ninalo vocha — tumia badala yake
+                </button>
+              )}
 
               <div className="flex items-center justify-center gap-2 mt-3">
                 <Shield className="w-3.5 h-3.5 text-gray-400" />

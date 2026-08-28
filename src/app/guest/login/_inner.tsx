@@ -47,9 +47,14 @@ export default function GuestLoginInner() {
 
       const data = await response.json()
       const token = encodeURIComponent(data.data.sessionToken)
+      const portalParams = new URLSearchParams()
+      for (const key of ['clientMac', 'apMac', 'ssidName', 'site', 't', 'gatewayMac', 'radioId', 'vid', 'redirectUrl', 'tp']) {
+        const value = searchParams.get(key)
+        if (value) portalParams.set(key, value)
+      }
       // Use window.location for a hard redirect — more reliable than router.push
       // when the component is still in a loading state
-      window.location.href = `/guest/packages?token=${token}`
+      window.location.href = `/guest/packages?token=${token}&${portalParams.toString()}`
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Imeshindikana kuanzisha ukurasa wa Wi-Fi.')
       setLoading(false)
