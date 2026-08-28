@@ -226,9 +226,9 @@ export default function PackagesInner() {
                   <Ticket className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                   <input
                     value={voucher}
-                    onChange={e => { setVoucher(e.target.value.toUpperCase()); setError('') }}
+                    onChange={e => { setVoucher(e.target.value); setError('') }}
                     placeholder="Namba ya vocha"
-                    className="w-full rounded-lg border-0 py-2 pl-9 pr-3 font-mono text-sm text-gray-900 uppercase"
+                    className="w-full rounded-lg border-0 py-2 pl-9 pr-3 font-mono text-sm text-gray-900"
                     autoComplete="off"
                   />
                 </div>

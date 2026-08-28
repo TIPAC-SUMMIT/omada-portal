@@ -178,9 +178,9 @@ export default function PortalPage() {
                   <input
                     type="text"
                     value={voucher}
-                    onChange={e => setVoucher(e.target.value.toUpperCase())}
+                    onChange={e => setVoucher(e.target.value)}
                     placeholder="Weka namba ya vocha"
-                    className="input-field pl-10 font-mono tracking-wider text-lg uppercase"
+                    className="input-field pl-10 font-mono tracking-wider text-lg"
                     autoComplete="off"
                     autoFocus
                     disabled={loading}
