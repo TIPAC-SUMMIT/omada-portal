@@ -43,11 +43,13 @@ export function calculateOmadaVoucherDurationMinutes(durationSeconds: number): n
   return Math.ceil(durationSeconds / 60)
 }
 
-export function calculateOmadaExpiryMillis(nowMillis: number, durationSeconds: number): number {
+export function calculateOmadaExpiryMillis(_nowMillis: number, durationSeconds: number): number {
   if (!Number.isInteger(durationSeconds) || durationSeconds < 60) {
     throw new Error('Omada authorization duration must be at least 60 seconds')
   }
-  return nowMillis + durationSeconds * 1000
+  // The controller's extPortal endpoint expects the session duration in
+  // milliseconds and adds it to the authorization start time.
+  return durationSeconds * 1000
 }
 
 let tokenCache: { value: string; expiresAt: number } | null = null
@@ -245,9 +247,7 @@ export async function authorizeOmadaClient(input: OmadaClientAuthorization): Pro
   )
   if (!login.data?.token) throw new Error('Omada controller did not return a CSRF token')
 
-  // Omada's hotspot authorization endpoint expects an epoch timestamp in
-  // milliseconds, not microseconds.
-  const expiryMillis = calculateOmadaExpiryMillis(Date.now(), input.durationSeconds)
+  const durationMillis = calculateOmadaExpiryMillis(Date.now(), input.durationSeconds)
   await controllerRequest(
     '/api/v2/hotspot/extPortal/auth',
     {
@@ -259,7 +259,7 @@ export async function authorizeOmadaClient(input: OmadaClientAuthorization): Pro
         ssidName: input.ssidName,
         radioId: input.radioId,
         site: input.site || ENV.OMADA_SITE_NAME,
-        time: expiryMillis,
+        time: durationMillis,
         authType: 4,
       }),
     },

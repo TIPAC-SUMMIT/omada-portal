@@ -54,8 +54,8 @@ export default function PortalPage() {
     form.action = omadaSubmitUrl
 
     const fields: Record<string, string> = {
-      voucherCode: voucher.trim().toUpperCase(),
-      clientMac, apMac, ssidName, site, t, gatewayMac, radioId, vid,
+      voucherCode: voucher.trim(),
+      clientMac, apMac, ssidName, gatewayMac, radioId, vid,
       originUrl,
       authType: '3', // Omada voucher authentication
     }
@@ -80,9 +80,9 @@ export default function PortalPage() {
     form.action = omadaSubmitUrl
 
     const fields: Record<string, string> = {
-      username: username.trim(),
-      password,
-      clientMac, apMac, ssidName, site, t, gatewayMac, radioId, vid,
+      localuser: username.trim(),
+      localuserPsw: password,
+      clientMac, apMac, ssidName, gatewayMac, radioId, vid,
       originUrl,
       authType: '5', // Omada local-user authentication
     }

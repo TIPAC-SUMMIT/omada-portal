@@ -136,7 +136,7 @@ export default function PackagesInner() {
       const value = searchParams.get(key)
       if (value) params.set(key, value)
     }
-    params.set('voucher', voucher.trim().toUpperCase())
+    params.set('voucher', voucher.trim())
     window.location.href = `/portal?${params.toString()}`
   }
 
