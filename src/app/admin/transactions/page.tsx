@@ -3,11 +3,14 @@ import { useEffect, useState } from 'react'
 import { RefreshCw, Search } from 'lucide-react'
 import { CURRENCY_FORMAT } from '@/lib/constants'
 import type { TransactionStatus } from '@/lib/types'
+import type { Site } from '@/lib/types'
 
 interface Transaction {
   id: string; reference: string; status: TransactionStatus
   amount_tzs: number; phone_number: string; client_mac: string
   created_at: string; authorized_at: string | null; expires_at: string | null
+  malipopay_transaction_id: string | null; voucher_code: string | null
+  error_code: string | null; error_message: string | null
   sites: { name: string } | null
   packages: { name: string } | null
 }
@@ -25,20 +28,32 @@ export default function TransactionsPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+  const [sites, setSites] = useState<Site[]>([])
+  const [siteId, setSiteId] = useState('')
+  const [status, setStatus] = useState('')
   const LIMIT = 20
 
   const load = async (p = 1) => {
     setLoading(true)
     try {
       const token = localStorage.getItem('admin_token')
-      const params = new URLSearchParams({ page: String(p), limit: String(LIMIT), ...(search && { search }) })
+      const params = new URLSearchParams({
+        page: String(p), limit: String(LIMIT),
+        ...(search && { search }), ...(siteId && { site_id: siteId }), ...(status && { status })
+      })
       const res = await fetch(`/api/admin/transactions?${params}`, { headers: { Authorization: `Bearer ${token}` } })
       const data = await res.json()
       if (data.success) { setRows(data.data); setTotal(data.pagination.total); setPage(p) }
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    fetch('/api/admin/sites')
+      .then(res => res.json())
+      .then(data => { if (data.success) setSites(data.data) })
+      .catch(() => {})
+    load()
+  }, [])
 
   const fmt = (d: string) => new Date(d).toLocaleString('en-TZ', { dateStyle: 'short', timeStyle: 'short' })
 
@@ -57,6 +72,14 @@ export default function TransactionsPage() {
               onKeyDown={e => e.key === 'Enter' && load(1)}
             />
           </div>
+          <select className="input-field py-2 text-sm" value={siteId} onChange={e => { setSiteId(e.target.value); load(1) }}>
+            <option value="">All sites</option>
+            {sites.map(site => <option key={site.id} value={site.id}>{site.name}</option>)}
+          </select>
+          <select className="input-field py-2 text-sm" value={status} onChange={e => { setStatus(e.target.value); load(1) }}>
+            <option value="">All statuses</option>
+            {Object.keys(STATUS_CLASS).map(value => <option key={value} value={value}>{value}</option>)}
+          </select>
           <button onClick={() => load(1)} className="btn-secondary py-2 px-3 text-sm flex items-center gap-1">
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -67,16 +90,16 @@ export default function TransactionsPage() {
         <table className="w-full text-sm min-w-[800px]">
           <thead className="bg-gray-50 text-gray-600 text-left">
             <tr>
-              {['Reference','Site','Package','Phone','Amount','Status','Client MAC','Created','Expires'].map(h => (
+              {['Reference','Site','Package','Phone','Amount','Status','Client MAC','Created','Expires','Details'].map(h => (
                 <th key={h} className="px-4 py-3 font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
-              <tr><td colSpan={9} className="py-8 text-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400 mx-auto" /></td></tr>
+              <tr><td colSpan={10} className="py-8 text-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400 mx-auto" /></td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={9} className="py-8 text-center text-gray-400">No transactions found</td></tr>
+              <tr><td colSpan={10} className="py-8 text-center text-gray-400">No transactions found</td></tr>
             ) : rows.map(r => (
               <tr key={r.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-mono text-xs text-gray-700">{r.reference}</td>
@@ -88,6 +111,12 @@ export default function TransactionsPage() {
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">{r.client_mac}</td>
                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmt(r.created_at)}</td>
                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.expires_at ? fmt(r.expires_at) : '—'}</td>
+                <td className="px-4 py-3 text-xs max-w-xs">
+                  {r.voucher_code && <div className="font-mono text-green-700">Voucher: {r.voucher_code}</div>}
+                  {r.malipopay_transaction_id && <div className="font-mono text-gray-500">Provider: {r.malipopay_transaction_id}</div>}
+                  {r.error_message && <div className="text-red-600 truncate" title={r.error_message}>{r.error_code ?? 'Error'}: {r.error_message}</div>}
+                  {!r.voucher_code && !r.malipopay_transaction_id && !r.error_message && '—'}
+                </td>
               </tr>
             ))}
           </tbody>

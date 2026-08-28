@@ -5,6 +5,7 @@ import { CURRENCY_FORMAT } from '@/lib/constants'
 
 interface Stats {
   totalRevenue: number; successfulPayments: number; failedPayments: number
+  pendingPayments: number; authorizationFailures: number
   activeClients: number; expiredSessions: number; todayTransactions: number
   revenueToday: number; paymentSuccessRate: number
 }
@@ -78,6 +79,8 @@ export default function DashboardPage() {
           <StatCard icon={TrendingUp}  label="Total Revenue"        value={CURRENCY_FORMAT.format(stats.totalRevenue)}  color="green"  />
           <StatCard icon={CheckCircle} label="Successful Payments"  value={stats.successfulPayments}                     color="green"  />
           <StatCard icon={XCircle}     label="Failed Payments"      value={stats.failedPayments}                         color="red"    />
+          <StatCard icon={Clock}       label="Pending Operations"    value={stats.pendingPayments}                       color="yellow" />
+          <StatCard icon={XCircle}     label="Authorization Failures" value={stats.authorizationFailures}               color="red"    />
           <StatCard icon={Wifi}        label="Active Clients"       value={stats.activeClients}                          color="blue"   />
           <StatCard icon={CreditCard}  label="Today's Transactions" value={stats.todayTransactions}                      color="purple" />
           <StatCard icon={TrendingUp}  label="Today's Revenue"      value={CURRENCY_FORMAT.format(stats.revenueToday)}  color="purple" />

@@ -34,6 +34,16 @@ export async function GET(request: NextRequest) {
     if (siteFilter) failedQuery = failedQuery.in('site_id', siteFilter)
     const { count: failedPayments } = await failedQuery
 
+    let pendingQuery = supabaseAdmin.from('payment_transactions').select('id', { count: 'exact', head: true })
+      .in('status', ['PENDING', 'PAYMENT_INITIATED', 'PAYMENT_SUCCESS', 'OMADA_AUTHORIZING'])
+    if (siteFilter) pendingQuery = pendingQuery.in('site_id', siteFilter)
+    const { count: pendingPayments } = await pendingQuery
+
+    let authorizationFailureQuery = supabaseAdmin.from('payment_transactions').select('id', { count: 'exact', head: true })
+      .eq('status', 'AUTHORIZATION_FAILED')
+    if (siteFilter) authorizationFailureQuery = authorizationFailureQuery.in('site_id', siteFilter)
+    const { count: authorizationFailures } = await authorizationFailureQuery
+
     // Active clients
     let activeQuery = supabaseAdmin.from('client_authorizations').select('id', { count: 'exact', head: true })
       .eq('status', 'ACTIVE').gt('expires_at', new Date().toISOString())
@@ -84,7 +94,18 @@ export async function GET(request: NextRequest) {
     }))
 
     return Response.json(apiSuccess({
-      stats: { totalRevenue, successfulPayments: successfulPayments ?? 0, failedPayments: failedPayments ?? 0, activeClients: activeClients ?? 0, expiredSessions: expiredSessions ?? 0, todayTransactions, revenueToday, paymentSuccessRate },
+      stats: {
+        totalRevenue,
+        successfulPayments: successfulPayments ?? 0,
+        failedPayments: failedPayments ?? 0,
+        pendingPayments: pendingPayments ?? 0,
+        authorizationFailures: authorizationFailures ?? 0,
+        activeClients: activeClients ?? 0,
+        expiredSessions: expiredSessions ?? 0,
+        todayTransactions,
+        revenueToday,
+        paymentSuccessRate
+      },
       siteStats: siteStats.sort((a, b) => b.revenue - a.revenue),
       packageStats: packageStats.sort((a, b) => b.sales - a.sales)
     }))

@@ -5,6 +5,7 @@ import type { Site } from '@/lib/types'
 
 export default function SitesPage() {
   const [sites, setSites] = useState<Site[]>([])
+  const [omadaSites, setOmadaSites] = useState<Array<{ siteId: string; name: string }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -25,7 +26,17 @@ export default function SitesPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  const loadOmadaSites = async () => {
+    try {
+      const res = await fetch('/api/admin/omada/sites')
+      const data = await res.json()
+      if (data.success) setOmadaSites(data.data)
+    } catch {
+      // The local site list remains usable if Omada is temporarily unavailable.
+    }
+  }
+
+  useEffect(() => { load(); loadOmadaSites() }, [])
 
   const openNew = () => { setEditing(null); setForm({ name: '', slug: '', omada_site_id: '', location: '', description: '', status: 'ACTIVE' }); setShowForm(true) }
   const openEdit = (s: Site) => { setEditing(s); setForm({ name: s.name, slug: s.slug, omada_site_id: s.omada_site_id ?? '', location: s.location ?? '', description: s.description ?? '', status: s.status }); setShowForm(true) }
@@ -115,6 +126,30 @@ export default function SitesPage() {
                 />
               </div>
             ))}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Omada Site</label>
+              <select
+                className="input-field"
+                value={form.omada_site_id}
+                onChange={e => setForm(f => ({ ...f, omada_site_id: e.target.value }))}
+              >
+                <option value="">Select an Omada site</option>
+                {omadaSites.map(site => (
+                  <option key={site.siteId} value={site.siteId}>{site.name} ({site.siteId})</option>
+                ))}
+              </select>
+              {omadaSites.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">Omada sites could not be loaded. Enter the ID below.</p>
+              )}
+              {omadaSites.length === 0 && (
+                <input
+                  className="input-field mt-2"
+                  placeholder="Omada site ID"
+                  value={form.omada_site_id}
+                  onChange={e => setForm(f => ({ ...f, omada_site_id: e.target.value }))}
+                />
+              )}
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select className="input-field" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as any }))}>

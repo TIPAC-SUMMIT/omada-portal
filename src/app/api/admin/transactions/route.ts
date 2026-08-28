@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabaseAdmin
       .from('payment_transactions')
-      .select('id,reference,status,amount_tzs,phone_number,client_mac,created_at,authorized_at,expires_at,sites!payment_transactions_site_id_fkey(name),packages!payment_transactions_package_id_fkey(name)', { count: 'exact' })
+      .select('id,reference,status,amount_tzs,phone_number,client_mac,created_at,authorized_at,expires_at,malipopay_transaction_id,voucher_code,omada_voucher_group_id,error_code,error_message,webhook_processed_at,sites!payment_transactions_site_id_fkey(name),packages!payment_transactions_package_id_fkey(name)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 

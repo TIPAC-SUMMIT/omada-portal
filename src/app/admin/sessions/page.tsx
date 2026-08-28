@@ -4,9 +4,10 @@ import { RefreshCw, Wifi } from 'lucide-react'
 import type { AuthorizationStatus } from '@/lib/types'
 
 interface Session {
-  id: string; client_mac: string; ap_mac: string; ssid_name: string
-  status: AuthorizationStatus; duration_seconds: number
-  authorized_at: string; expires_at: string
+  id: string; record_type: 'AUTHORIZATION' | 'PAYMENT'; client_mac: string; ap_mac: string; ssid_name: string
+  status: AuthorizationStatus | string; duration_seconds?: number; amount_tzs?: number
+  authorized_at?: string; expires_at?: string; created_at: string; reference?: string
+  error_code?: string | null; error_message?: string | null
   sites: { name: string } | null
   packages: { name: string } | null
 }
@@ -30,7 +31,7 @@ export default function SessionsPage() {
   const fmt = (d: string) => new Date(d).toLocaleString('en-TZ', { dateStyle: 'short', timeStyle: 'short' })
 
   const statusBadge = (s: AuthorizationStatus, expires: string) => {
-    const expired = new Date(expires) < new Date()
+    const expired = expires && new Date(expires) < new Date()
     if (expired || s === 'EXPIRED') return <span className="status-error">EXPIRED</span>
     if (s === 'REVOKED') return <span className="status-error">REVOKED</span>
     return <span className="status-success">ACTIVE</span>
@@ -49,25 +50,27 @@ export default function SessionsPage() {
         <table className="w-full text-sm min-w-[700px]">
           <thead className="bg-gray-50 text-gray-600 text-left">
             <tr>
-              {['Client MAC','Site','AP','Package','Start Time','Expires','Status'].map(h => (
+              {['Type','Client MAC','Site','AP','Package','Start Time','Expires','Status','Issue'].map(h => (
                 <th key={h} className="px-4 py-3 font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
-              <tr><td colSpan={7} className="py-8 text-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400 mx-auto" /></td></tr>
+              <tr><td colSpan={9} className="py-8 text-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400 mx-auto" /></td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={7} className="py-8 text-center text-gray-400">No active sessions</td></tr>
+              <tr><td colSpan={9} className="py-8 text-center text-gray-400">No active sessions or pending operations</td></tr>
             ) : rows.map(r => (
               <tr key={r.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-xs">{r.record_type === 'PAYMENT' ? 'PAYMENT' : 'SESSION'}</td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-700">{r.client_mac}</td>
                 <td className="px-4 py-3 text-gray-500">{r.sites?.name ?? '—'}</td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">{r.ap_mac}</td>
-                <td className="px-4 py-3 text-gray-500">{r.packages?.name ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmt(r.authorized_at)}</td>
-                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmt(r.expires_at)}</td>
-                <td className="px-4 py-3">{statusBadge(r.status, r.expires_at)}</td>
+                <td className="px-4 py-3 text-gray-500">{r.packages?.name ?? (r.amount_tzs ? `${r.amount_tzs} TZS` : '—')}</td>
+                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmt(r.authorized_at ?? r.created_at)}</td>
+                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.expires_at ? fmt(r.expires_at) : '—'}</td>
+                <td className="px-4 py-3">{r.record_type === 'AUTHORIZATION' ? statusBadge(r.status as AuthorizationStatus, r.expires_at ?? '') : <span className={r.status === 'AUTHORIZATION_FAILED' ? 'status-error' : 'status-pending'}>{r.status}</span>}</td>
+                <td className="px-4 py-3 text-xs text-red-600 max-w-xs truncate" title={r.error_message ?? undefined}>{r.error_message ?? r.reference ?? '—'}</td>
               </tr>
             ))}
           </tbody>
