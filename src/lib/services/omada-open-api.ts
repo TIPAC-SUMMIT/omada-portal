@@ -36,7 +36,17 @@ export interface OmadaClientAuthorization {
   durationSeconds: number
 }
 
+export function calculateOmadaVoucherDurationMinutes(durationSeconds: number): number {
+  if (!Number.isInteger(durationSeconds) || durationSeconds < 60) {
+    throw new Error('Omada authorization duration must be at least 60 seconds')
+  }
+  return Math.ceil(durationSeconds / 60)
+}
+
 export function calculateOmadaExpiryMillis(nowMillis: number, durationSeconds: number): number {
+  if (!Number.isInteger(durationSeconds) || durationSeconds < 60) {
+    throw new Error('Omada authorization duration must be at least 60 seconds')
+  }
   return nowMillis + durationSeconds * 1000
 }
 
@@ -103,7 +113,7 @@ export async function createOmadaVoucher(
   }
 
   const token = await getAccessToken()
-  const durationMinutes = Math.max(1, Math.ceil(durationSeconds / 60))
+  const durationMinutes = calculateOmadaVoucherDurationMinutes(durationSeconds)
   const groupName = `TIPAC-${reference}`.slice(0, 32)
 
   const createResponse = await fetch(
