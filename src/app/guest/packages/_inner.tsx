@@ -152,15 +152,15 @@ export default function PackagesInner() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-900 via-brand-800 to-gray-900">
       {/* Header */}
-      <div className="px-4 pt-8 pb-6 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 backdrop-blur rounded-2xl mb-4">
-          <Wifi className="w-8 h-8 text-white" />
+      <div className="px-4 pt-4 pb-3 text-center">
+        <div className="inline-flex items-center justify-center w-11 h-11 bg-white/10 backdrop-blur rounded-xl mb-2">
+          <Wifi className="w-6 h-6 text-white" />
         </div>
-        <h1 className="text-2xl font-bold text-white">TIPAC SUMMIT</h1>
-        <p className="text-brand-200 text-sm mt-1">Internet ya Wi-Fi yenye kasi</p>
+        <h1 className="text-xl font-bold text-white">TIPAC SUMMIT</h1>
+        <p className="text-brand-200 text-xs mt-0.5">Internet ya Wi-Fi yenye kasi</p>
 
         {/* Trust badges */}
-        <div className="flex items-center justify-center gap-4 mt-4">
+        <div className="flex items-center justify-center gap-3 mt-2">
           <div className="flex items-center gap-1.5 text-brand-300 text-xs">
             <Shield className="w-3.5 h-3.5" /> Malipo salama
           </div>
@@ -170,7 +170,7 @@ export default function PackagesInner() {
         </div>
       </div>
 
-      <div className="px-4 pb-8 max-w-md mx-auto">
+      <div className="px-3 pb-4 max-w-md mx-auto">
         {error && (
           <div className="mb-4 bg-red-500/20 border border-red-400/30 rounded-xl p-3 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-red-300 shrink-0" />
@@ -180,36 +180,36 @@ export default function PackagesInner() {
 
         {step === 'select' && (
           <>
-            <p className="text-brand-200 text-sm text-center mb-4">Chagua kifurushi chako cha internet</p>
-            <div className="space-y-3">
+            <p className="text-brand-200 text-sm text-center mb-2">Chagua kifurushi chako cha internet</p>
+            <div className="grid grid-cols-2 gap-2">
               {packages.map((pkg, i) => {
                 const popular = i === 1
                 return (
                   <button key={pkg.id} onClick={() => handleSelect(pkg)}
-                    className={`w-full text-left rounded-2xl p-4 transition-all active:scale-95 relative overflow-hidden
+                    className={`w-full text-left rounded-xl p-3 transition-all active:scale-95 relative overflow-hidden
                       ${popular
                         ? 'bg-brand-500 border-2 border-brand-300 shadow-lg shadow-brand-900/50'
                         : 'bg-white/10 border border-white/20 hover:bg-white/15'}`}>
                     {popular && (
-                      <span className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full">
+                      <span className="absolute top-1 right-1 bg-yellow-400 text-yellow-900 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                         INAPENDWA
                       </span>
                     )}
-                    <div className="flex items-center justify-between">
+                    <div>
                       <div>
-                        <p className={`font-bold text-lg ${popular ? 'text-white' : 'text-white'}`}>{pkg.name}</p>
+                        <p className="font-bold text-sm text-white truncate pr-1">{pkg.name}</p>
                         <div className="flex items-center gap-1 mt-1">
-                          <Clock className={`w-3.5 h-3.5 ${popular ? 'text-brand-100' : 'text-brand-300'}`} />
-                          <span className={`text-sm ${popular ? 'text-brand-100' : 'text-brand-300'}`}>
-                            {formatDurationSwahili(pkg.duration_seconds)} za kutumia internet
+                          <Clock className={`w-3 h-3 shrink-0 ${popular ? 'text-brand-100' : 'text-brand-300'}`} />
+                          <span className={`text-xs truncate ${popular ? 'text-brand-100' : 'text-brand-300'}`}>
+                            {formatDurationSwahili(pkg.duration_seconds)}
                           </span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className={`text-2xl font-bold ${popular ? 'text-white' : 'text-white'}`}>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-base font-bold text-white">
                           TZS {pkg.price_tzs.toLocaleString()}
                         </p>
-                        <ArrowRight className={`w-4 h-4 ml-auto mt-1 ${popular ? 'text-brand-100' : 'text-brand-400'}`} />
+                        <ArrowRight className={`w-4 h-4 ${popular ? 'text-brand-100' : 'text-brand-400'}`} />
                       </div>
                     </div>
                   </button>
@@ -217,28 +217,18 @@ export default function PackagesInner() {
               })}
             </div>
 
-            {/* Supported networks */}
-            <div className="mt-6 bg-white/5 rounded-xl p-4">
-              <p className="text-brand-300 text-xs text-center mb-3">Mitandao ya pesa inayokubalika</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {MOBILE_MONEY_NETWORKS.map(network => (
-                  <div key={network.name} className={`${network.color} rounded-lg py-2.5 px-1 text-center shadow-sm`}>
-                    <p className="text-white text-xs font-bold">{network.text}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mt-4 rounded-xl border border-yellow-300/30 bg-yellow-400/10 p-4">
+            {/* Printed voucher comes immediately after packages for shop purchases. */}
+            <div className="mt-3 rounded-xl border border-yellow-300/30 bg-yellow-400/10 p-3">
               <p className="text-white text-sm font-semibold text-center">Ulinunua vocha kwa cash?</p>
-              <p className="text-brand-200 text-xs mt-1 text-center">Weka namba ya vocha uliyopewa dukani.</p>
-              <div className="mt-3 flex gap-2">
+              <p className="text-brand-200 text-xs mt-0.5 text-center">Weka namba ya vocha uliyopewa dukani.</p>
+              <div className="mt-2 flex gap-2">
                 <div className="relative flex-1">
-                  <Ticket className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <Ticket className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                   <input
                     value={voucher}
                     onChange={e => { setVoucher(e.target.value.toUpperCase()); setError('') }}
                     placeholder="Namba ya vocha"
-                    className="w-full rounded-lg border-0 py-2.5 pl-9 pr-3 font-mono text-sm text-gray-900 uppercase"
+                    className="w-full rounded-lg border-0 py-2 pl-9 pr-3 font-mono text-sm text-gray-900 uppercase"
                     autoComplete="off"
                   />
                 </div>
@@ -247,6 +237,25 @@ export default function PackagesInner() {
                   Tumia
                 </button>
               </div>
+            </div>
+
+            {/* Supported networks */}
+            <div className="mt-3 bg-white/5 rounded-xl p-2.5">
+              <p className="text-brand-300 text-[11px] text-center mb-2">Mitandao ya pesa inayokubalika</p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {MOBILE_MONEY_NETWORKS.map(network => (
+                  <div key={network.name} className={`${network.color} rounded-md py-1.5 px-0.5 text-center shadow-sm`}>
+                    <p className="text-white text-[10px] font-bold truncate">{network.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-3 border-t border-white/10 pt-2 text-center text-[11px] text-brand-200">
+              Kwa msaada piga namba{' '}
+              <a className="font-semibold text-white" href="tel:0704170040">0704 170 040</a>
+              {' '}au{' '}
+              <a className="font-semibold text-white" href="tel:0749779776">0749 779 776</a>
             </div>
           </>
         )}
