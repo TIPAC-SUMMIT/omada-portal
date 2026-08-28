@@ -36,8 +36,11 @@ export const phoneSchema = z
 
 export const macAddressSchema = z
   .string()
-  .regex(VALIDATION_RULES.MAC_ADDRESS_PATTERN, 'Invalid MAC address format')
-  .transform(val => val.toUpperCase())
+  .transform(val => val.trim().replace(/[^0-9A-Fa-f]/g, '').toUpperCase())
+  .refine(val => val.length === 12 && /^[0-9A-F]+$/.test(val), {
+    message: 'Invalid MAC address format'
+  })
+  .transform(val => val.match(/.{2}/g)!.join(':'))
 
 export const slugSchema = z
   .string()

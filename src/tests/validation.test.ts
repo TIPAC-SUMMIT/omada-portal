@@ -20,6 +20,19 @@ describe('omadaRedirectParamsSchema', () => {
     expect(r.success).toBe(true)
     if (r.success) expect(r.data.clientMac).toBe('AA:BB:CC:DD:EE:FF')
   })
+
+  it('normalizes Omada MAC formats', () => {
+    const r = omadaRedirectParamsSchema.safeParse({
+      ...valid,
+      clientMac: 'aa-bb-cc-dd-ee-ff',
+      apMac: 'aabb.ccdd.eeff'
+    })
+    expect(r.success).toBe(true)
+    if (r.success) {
+      expect(r.data.clientMac).toBe('AA:BB:CC:DD:EE:FF')
+      expect(r.data.apMac).toBe('AA:BB:CC:DD:EE:FF')
+    }
+  })
 })
 
 describe('adminLoginSchema', () => {
