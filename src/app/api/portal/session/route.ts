@@ -30,6 +30,18 @@ export async function POST(request: NextRequest) {
     const clientIp = request.headers.get('x-forwarded-for') || request.ip || null
     const userAgent = request.headers.get('user-agent') || null
 
+    const { count: recentSessions } = await supabaseAdmin
+      .from('portal_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_mac', params.clientMac)
+      .gt('created_at', new Date(Date.now() - 15 * 60_000).toISOString())
+
+    if ((recentSessions ?? 0) >= 5) {
+      return Response.json(apiError('Too many portal sessions for this device', 'SESSION_RATE_LIMITED'), {
+        status: HTTP_STATUS.TOO_MANY_REQUESTS
+      })
+    }
+
     // Generate secure session token
     const sessionToken = generateSecureToken(32)
     const sessionTokenHash = hashSessionToken(sessionToken)

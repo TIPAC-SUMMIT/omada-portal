@@ -40,6 +40,12 @@ export const macAddressSchema = z
   .refine(val => val.length === 12 && /^[0-9A-F]+$/.test(val), {
     message: 'Invalid MAC address format'
   })
+  .refine(val => {
+    const firstOctet = parseInt(val.slice(0, 2), 16)
+    return val !== '000000000000' && val !== 'FFFFFFFFFFFF' && (firstOctet & 1) === 0
+  }, {
+    message: 'MAC address must be a unicast address'
+  })
   .transform(val => val.match(/.{2}/g)!.join(':'))
 
 export const slugSchema = z

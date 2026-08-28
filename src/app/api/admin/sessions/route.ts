@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
       .order('authorized_at', { ascending: false })
       .limit(200)
 
-    if (admin.role === 'SITE_ADMIN' && admin.sites?.length) query = query.in('site_id', admin.sites)
+    if (admin.role === 'SITE_ADMIN') {
+      if (!admin.sites?.length) return Response.json(apiSuccess([]))
+      query = query.in('site_id', admin.sites)
+    }
 
     const { data, error } = await query
     if (error) throw error
@@ -26,7 +29,10 @@ export async function GET(request: NextRequest) {
       .in('status', ['PENDING', 'PAYMENT_INITIATED', 'PAYMENT_SUCCESS', 'OMADA_AUTHORIZING', 'AUTHORIZATION_FAILED'])
       .order('created_at', { ascending: false })
       .limit(200)
-    if (admin.role === 'SITE_ADMIN' && admin.sites?.length) paymentQuery = paymentQuery.in('site_id', admin.sites)
+    if (admin.role === 'SITE_ADMIN') {
+      if (!admin.sites?.length) return Response.json(apiSuccess([]))
+      paymentQuery = paymentQuery.in('site_id', admin.sites)
+    }
     const { data: payments, error: paymentError } = await paymentQuery
     if (paymentError) throw paymentError
 

@@ -1,7 +1,7 @@
 import { omadaRedirectParamsSchema, createPaymentSchema, adminLoginSchema } from '@/lib/validation'
 
 describe('omadaRedirectParamsSchema', () => {
-  const valid = { clientMac: 'AA:BB:CC:DD:EE:FF', apMac: '11:22:33:44:55:66', ssidName: 'GuestWiFi' }
+  const valid = { clientMac: 'AA:BB:CC:DD:EE:FF', apMac: '12:22:33:44:55:66', ssidName: 'GuestWiFi' }
 
   it('accepts valid params', () => {
     const r = omadaRedirectParamsSchema.safeParse(valid)
@@ -10,6 +10,10 @@ describe('omadaRedirectParamsSchema', () => {
   it('rejects invalid clientMac', () => {
     const r = omadaRedirectParamsSchema.safeParse({ ...valid, clientMac: 'not-a-mac' })
     expect(r.success).toBe(false)
+  })
+  it('rejects multicast and broadcast MAC addresses', () => {
+    expect(omadaRedirectParamsSchema.safeParse({ ...valid, clientMac: '01:00:00:00:00:01' }).success).toBe(false)
+    expect(omadaRedirectParamsSchema.safeParse({ ...valid, clientMac: 'FF:FF:FF:FF:FF:FF' }).success).toBe(false)
   })
   it('rejects empty ssidName', () => {
     const r = omadaRedirectParamsSchema.safeParse({ ...valid, ssidName: '' })
@@ -25,12 +29,12 @@ describe('omadaRedirectParamsSchema', () => {
     const r = omadaRedirectParamsSchema.safeParse({
       ...valid,
       clientMac: 'aa-bb-cc-dd-ee-ff',
-      apMac: 'aabb.ccdd.eeff'
+      apMac: '12bb.ccdd.eeff'
     })
     expect(r.success).toBe(true)
     if (r.success) {
       expect(r.data.clientMac).toBe('AA:BB:CC:DD:EE:FF')
-      expect(r.data.apMac).toBe('AA:BB:CC:DD:EE:FF')
+      expect(r.data.apMac).toBe('12:BB:CC:DD:EE:FF')
     }
   })
 })

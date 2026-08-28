@@ -41,6 +41,15 @@ export async function middleware(request: NextRequest) {
         status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': '300' }
       })
     }
+
+    if (pathname.startsWith('/api/admin/')) {
+      if (!rateLimit(`admin:${ip}`, 120, 60_000)) {
+        return new NextResponse(JSON.stringify({ success: false, error: 'Rate limit exceeded' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', 'Retry-After': '60' }
+        })
+      }
+    }
   }
 
   if (pathname.startsWith('/api/payment/create')) {
@@ -64,6 +73,15 @@ export async function middleware(request: NextRequest) {
       return new NextResponse(JSON.stringify({ success: false, error: 'Rate limit exceeded' }), {
         status: 429, headers: { 'Content-Type': 'application/json' }
       })
+    }
+
+    if (pathname.startsWith('/api/malipopay/callback')) {
+      if (!rateLimit(`callback:${ip}`, 30, 60_000)) {
+        return new NextResponse(JSON.stringify({ received: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
     }
   }
 
