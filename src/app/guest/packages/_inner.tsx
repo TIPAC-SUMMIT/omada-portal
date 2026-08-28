@@ -8,7 +8,28 @@ import { normalizePhoneNumber, validateTanzanianPhone } from '@/lib/utils'
 import type { Package } from '@/lib/types'
 
 const PROVIDER_ICONS: Record<string, string> = {
-  Vodacom: '🔴', Airtel: '🔵', Tigo: '🟡', Halotel: '🟢'
+  Vodacom: '🔴', Airtel: '🔴', Tigo: '🔵', Halotel: '🟠'
+}
+
+const MOBILE_MONEY_NETWORKS = [
+  { name: 'M-Pesa', color: 'bg-red-600', text: 'M-Pesa' },
+  { name: 'Tigo Pesa', color: 'bg-blue-600', text: 'Tigo Pesa' },
+  { name: 'Airtel Money', color: 'bg-red-500', text: 'Airtel Money' },
+  { name: 'HaloPesa', color: 'bg-orange-500', text: 'HaloPesa' },
+]
+
+const PROVIDER_LABELS: Record<string, string> = {
+  Vodacom: 'M-Pesa',
+  Airtel: 'Airtel Money',
+  Tigo: 'Tigo Pesa',
+  Halotel: 'HaloPesa',
+}
+
+const PROVIDER_COLORS: Record<string, string> = {
+  Vodacom: 'text-red-600',
+  Airtel: 'text-red-500',
+  Tigo: 'text-blue-600',
+  Halotel: 'text-orange-500',
 }
 
 function detectProvider(phone: string): string {
@@ -190,10 +211,10 @@ export default function PackagesInner() {
             {/* Supported networks */}
             <div className="mt-6 bg-white/5 rounded-xl p-4">
               <p className="text-brand-300 text-xs text-center mb-3">Mitandao ya pesa inayokubalika</p>
-              <div className="grid grid-cols-4 gap-2">
-                {['M-Pesa', 'Tigo Pesa', 'Airtel', 'Halopesa'].map(n => (
-                  <div key={n} className="bg-white/10 rounded-lg py-2 px-1 text-center">
-                    <p className="text-white text-xs font-medium">{n}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {MOBILE_MONEY_NETWORKS.map(network => (
+                  <div key={network.name} className={`${network.color} rounded-lg py-2.5 px-1 text-center shadow-sm`}>
+                    <p className="text-white text-xs font-bold">{network.text}</p>
                   </div>
                 ))}
               </div>
@@ -250,8 +271,8 @@ export default function PackagesInner() {
                   disabled={submitting}
                 />
                 {provider && !phoneError && (
-                  <span className="absolute right-3 top-3 text-sm font-medium text-green-600">
-                    {PROVIDER_ICONS[provider]} {provider}
+                  <span className={`absolute right-3 top-3 text-sm font-medium ${PROVIDER_COLORS[provider]}`}>
+                    {PROVIDER_ICONS[provider]} {PROVIDER_LABELS[provider] || provider}
                   </span>
                 )}
               </div>
