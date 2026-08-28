@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 8. Map status and atomically claim the webhook ─────────────────────────
-  const { data: claimed, error: claimError } = await supabaseAdmin
+  const { error: claimError } = await supabaseAdmin
     .from('payment_transactions')
     .update({
       webhook_processed_at: now(),
@@ -148,11 +148,23 @@ export async function POST(request: NextRequest) {
       status: mappedStatus
     })
     .eq('id', transaction.id)
-    .is('webhook_processed_at', null)    // only claim if not yet processed
+    .is('webhook_processed_at', null) // only claim if not yet processed
+
+  if (claimError) {
+    console.error(JSON.stringify({
+      level: 'error', event: 'WEBHOOK_CLAIM_FAILED',
+      requestId, ourReference, error: claimError.message
+    }))
+    return Response.json({ received: true }, { status: HTTP_STATUS.OK })
+  }
+
+  const { data: claimed } = await supabaseAdmin
+    .from('payment_transactions')
     .select('*')
+    .eq('id', transaction.id)
     .single()
 
-  if (claimError || !claimed) {
+  if (!claimed || claimed.webhook_processed_at === null) {
     // Race condition — another instance already claimed it
     console.log(JSON.stringify({ level: 'info', event: 'WEBHOOK_CLAIM_RACE', requestId, ourReference }))
     return Response.json({ received: true }, { status: HTTP_STATUS.OK })
