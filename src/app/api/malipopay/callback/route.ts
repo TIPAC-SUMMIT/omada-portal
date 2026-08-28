@@ -138,8 +138,31 @@ export async function POST(request: NextRequest) {
     return Response.json({ received: true }, { status: HTTP_STATUS.OK })
   }
 
+  // A delayed success can arrive after a guest started a newer attempt.
+  // Release only still-pending attempts so the confirmed payment can be recorded.
+  if (mappedStatus === 'PAYMENT_SUCCESS') {
+    const { error: competingError } = await supabaseAdmin
+      .from('payment_transactions')
+      .update({
+        status: 'EXPIRED',
+        error_code: 'SUPERSEDED_BY_CONFIRMED_PAYMENT',
+        error_message: 'Superseded by a confirmed payment for this portal session.'
+      })
+      .eq('portal_session_id', transaction.portal_session_id)
+      .neq('id', transaction.id)
+      .in('status', ['PENDING', 'PAYMENT_INITIATED'])
+
+    if (competingError) {
+      console.error(JSON.stringify({
+        level: 'error', event: 'WEBHOOK_COMPETING_TRANSACTION_UPDATE_FAILED',
+        requestId, ourReference, error: competingError.message
+      }))
+      return Response.json({ received: true }, { status: HTTP_STATUS.OK })
+    }
+  }
+
   // ── 8. Map status and atomically claim the webhook ─────────────────────────
-  const { error: claimError } = await supabaseAdmin
+  const { data: claimedRows, error: claimError } = await supabaseAdmin
     .from('payment_transactions')
     .update({
       webhook_processed_at: now(),
@@ -149,6 +172,7 @@ export async function POST(request: NextRequest) {
     })
     .eq('id', transaction.id)
     .is('webhook_processed_at', null) // only claim if not yet processed
+    .select('id')
 
   if (claimError) {
     console.error(JSON.stringify({
@@ -158,13 +182,7 @@ export async function POST(request: NextRequest) {
     return Response.json({ received: true }, { status: HTTP_STATUS.OK })
   }
 
-  const { data: claimed } = await supabaseAdmin
-    .from('payment_transactions')
-    .select('*')
-    .eq('id', transaction.id)
-    .single()
-
-  if (!claimed || claimed.webhook_processed_at === null) {
+  if (!claimedRows || claimedRows.length === 0) {
     // Race condition — another instance already claimed it
     console.log(JSON.stringify({ level: 'info', event: 'WEBHOOK_CLAIM_RACE', requestId, ourReference }))
     return Response.json({ received: true }, { status: HTTP_STATUS.OK })

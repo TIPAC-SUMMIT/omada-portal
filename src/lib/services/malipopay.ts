@@ -163,10 +163,10 @@ class RealMalipoPayService implements IMalipoPayService {
   }
 
   verifyWebhook(rawBody: string, signatureHeader?: string): boolean {
-    // If no secret configured — allow but warn (should only happen in dev)
+    // Never accept unsigned callbacks in production.
     if (!this.webhookSecret) {
-      console.warn(JSON.stringify({ level: 'warn', event: 'WEBHOOK_NO_SECRET' }))
-      return true
+      console.error(JSON.stringify({ level: 'error', event: 'WEBHOOK_NO_SECRET' }))
+      return false
     }
 
     if (!signatureHeader) {
