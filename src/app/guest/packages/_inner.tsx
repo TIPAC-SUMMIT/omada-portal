@@ -132,7 +132,7 @@ export default function PackagesInner() {
       return
     }
     const params = new URLSearchParams()
-    for (const key of ['clientMac', 'apMac', 'ssidName', 'site', 't', 'gatewayMac', 'radioId', 'vid', 'redirectUrl', 'tp']) {
+    for (const key of ['clientMac', 'apMac', 'ssidName', 'site', 't', 'gatewayMac', 'radioId', 'vid', 'originUrl', 'redirectUrl', 'tp']) {
       const value = searchParams.get(key)
       if (value) params.set(key, value)
     }

@@ -77,6 +77,7 @@ export const omadaRedirectParamsSchema = z.object({
   gatewayMac: macAddressSchema.optional(),
   radioId: z.string().optional(),
   vid: z.string().optional(),
+  originUrl: z.string().url().optional(),
   redirectUrl: z.string().url().optional(),
   portalAuthUrl: z.string().url().optional()
 })

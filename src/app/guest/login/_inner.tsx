@@ -24,6 +24,7 @@ export default function GuestLoginInner() {
         gatewayMac:  searchParams.get('gatewayMac')  || undefined,
         radioId:     searchParams.get('radioId')     || undefined,
         vid:         searchParams.get('vid')         || undefined,
+        originUrl:   searchParams.get('originUrl')   || undefined,
         redirectUrl: searchParams.get('redirectUrl') || undefined,
         portalAuthUrl: searchParams.get('tp') || undefined,
       }
@@ -48,7 +49,7 @@ export default function GuestLoginInner() {
       const data = await response.json()
       const token = encodeURIComponent(data.data.sessionToken)
       const portalParams = new URLSearchParams()
-      for (const key of ['clientMac', 'apMac', 'ssidName', 'site', 't', 'gatewayMac', 'radioId', 'vid', 'redirectUrl', 'tp']) {
+      for (const key of ['clientMac', 'apMac', 'ssidName', 'site', 't', 'gatewayMac', 'radioId', 'vid', 'originUrl', 'redirectUrl', 'tp']) {
         const value = searchParams.get(key)
         if (value) portalParams.set(key, value)
       }

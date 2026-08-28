@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         gateway_mac: params.gatewayMac || null,
         radio_id: params.radioId || null,
         vid: params.vid || null,
-        redirect_url: params.redirectUrl || null,
+        redirect_url: params.originUrl || params.redirectUrl || null,
         portal_auth_url: params.portalAuthUrl || null,
         user_agent: userAgent,
         expires_at: expiresAt

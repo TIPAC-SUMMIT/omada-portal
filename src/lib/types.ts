@@ -246,6 +246,7 @@ export interface OmadaRedirectParams {
   gatewayMac?: string
   radioId?: string
   vid?: string
+  originUrl?: string
   redirectUrl?: string
   portalAuthUrl?: string
 }

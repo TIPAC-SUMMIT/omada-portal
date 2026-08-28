@@ -22,6 +22,7 @@ export default function PortalPage() {
   const radioId    = searchParams.get('radioId')    || ''
   const vid        = searchParams.get('vid')        || ''
   const redirectUrl = searchParams.get('redirectUrl') || ''
+  const originUrl  = searchParams.get('originUrl') || redirectUrl
   const tp         = searchParams.get('tp')         || '' // Omada submit URL base
 
   const [tab, setTab] = useState<'voucher' | 'user'>('voucher')
@@ -38,9 +39,8 @@ export default function PortalPage() {
     if (preVoucher) setVoucher(preVoucher)
   }, [])
 
-  // Build the submit URL that Omada controller listens on
-  // Omada provides the submit base via the page config — for now we use the tp param
-  const omadaSubmitUrl = tp ? decodeURIComponent(tp) : ''
+  // URLSearchParams has already decoded the tp value supplied by Omada.
+  const omadaSubmitUrl = tp
 
   const handleVoucherLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,10 +54,10 @@ export default function PortalPage() {
     form.action = omadaSubmitUrl
 
     const fields: Record<string, string> = {
-      voucherCode: voucher.trim(),
+      voucherCode: voucher.trim().toUpperCase(),
       clientMac, apMac, ssidName, site, t, gatewayMac, radioId, vid,
-      redirectUrl,
-      authType: '4', // External portal authorization
+      originUrl,
+      authType: '3', // Omada voucher authentication
     }
     Object.entries(fields).forEach(([k, v]) => {
       if (!v) return
@@ -83,8 +83,8 @@ export default function PortalPage() {
       username: username.trim(),
       password,
       clientMac, apMac, ssidName, site, t, gatewayMac, radioId, vid,
-      redirectUrl,
-      authType: '4', // External portal authorization
+      originUrl,
+      authType: '5', // Omada local-user authentication
     }
     Object.entries(fields).forEach(([k, v]) => {
       if (!v) return
@@ -108,6 +108,7 @@ export default function PortalPage() {
     if (radioId)     params.set('radioId', radioId)
     if (vid)         params.set('vid', vid)
     if (redirectUrl) params.set('redirectUrl', redirectUrl)
+    if (originUrl) params.set('originUrl', originUrl)
     if (tp)          params.set('tp', tp)
 
     window.location.href = `/guest/login?${params.toString()}`
