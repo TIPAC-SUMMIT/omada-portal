@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Clock, CreditCard, Phone, CheckCircle, AlertCircle, Wifi, Shield, Zap, ArrowRight, Loader2 } from 'lucide-react'
+import { Clock, CreditCard, Phone, Ticket, AlertCircle, Wifi, Shield, Zap, ArrowRight, Loader2 } from 'lucide-react'
 import { formatDurationSwahili } from '@/lib/constants'
 import { normalizePhoneNumber, validateTanzanianPhone } from '@/lib/utils'
 import type { Package } from '@/lib/types'
@@ -45,11 +45,11 @@ export default function PackagesInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const sessionToken = searchParams.get('token')
-  const hasVoucherLogin = Boolean(searchParams.get('tp'))
 
   const [packages, setPackages] = useState<Package[]>([])
   const [selectedPkg, setSelectedPkg] = useState<Package | null>(null)
   const [phone, setPhone] = useState('')
+  const [voucher, setVoucher] = useState('')
   const [phoneError, setPhoneError] = useState('')
   const [provider, setProvider] = useState('')
   const [loading, setLoading] = useState(true)
@@ -123,11 +123,20 @@ export default function PackagesInner() {
   }
 
   const handleVoucher = () => {
+    if (!voucher.trim()) {
+      setError('Weka namba ya vocha kwanza.')
+      return
+    }
+    if (!searchParams.get('tp')) {
+      setError('Anwani ya kuingia Wi-Fi haipo. Zima kisha washa Wi-Fi ujaribu tena.')
+      return
+    }
     const params = new URLSearchParams()
     for (const key of ['clientMac', 'apMac', 'ssidName', 'site', 't', 'gatewayMac', 'radioId', 'vid', 'redirectUrl', 'tp']) {
       const value = searchParams.get(key)
       if (value) params.set(key, value)
     }
+    params.set('voucher', voucher.trim().toUpperCase())
     window.location.href = `/portal?${params.toString()}`
   }
 
@@ -219,16 +228,26 @@ export default function PackagesInner() {
                 ))}
               </div>
             </div>
-            {hasVoucherLogin && (
-              <div className="mt-4 rounded-xl border border-yellow-300/30 bg-yellow-400/10 p-4 text-center">
-                <p className="text-white text-sm font-semibold">Tayari una vocha?</p>
-                <p className="text-brand-200 text-xs mt-1">Ingiza namba ya vocha uliyonunua dukani.</p>
+            <div className="mt-4 rounded-xl border border-yellow-300/30 bg-yellow-400/10 p-4">
+              <p className="text-white text-sm font-semibold text-center">Ulinunua vocha kwa cash?</p>
+              <p className="text-brand-200 text-xs mt-1 text-center">Weka namba ya vocha uliyopewa dukani.</p>
+              <div className="mt-3 flex gap-2">
+                <div className="relative flex-1">
+                  <Ticket className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <input
+                    value={voucher}
+                    onChange={e => { setVoucher(e.target.value.toUpperCase()); setError('') }}
+                    placeholder="Namba ya vocha"
+                    className="w-full rounded-lg border-0 py-2.5 pl-9 pr-3 font-mono text-sm text-gray-900 uppercase"
+                    autoComplete="off"
+                  />
+                </div>
                 <button onClick={handleVoucher}
-                  className="mt-3 rounded-lg bg-yellow-400 px-4 py-2 text-sm font-bold text-yellow-950 hover:bg-yellow-300">
-                  Tumia vocha
+                  className="rounded-lg bg-yellow-400 px-3 py-2 text-sm font-bold text-yellow-950 hover:bg-yellow-300">
+                  Tumia
                 </button>
               </div>
-            )}
+            </div>
           </>
         )}
 
@@ -288,13 +307,6 @@ export default function PackagesInner() {
                   ? <><Loader2 className="w-5 h-5 animate-spin" /> Inashughulikia…</>
                   : <><CreditCard className="w-5 h-5" /> Lipa TZS {selectedPkg.price_tzs.toLocaleString()}</>}
               </button>
-
-              {hasVoucherLogin && (
-                <button onClick={handleVoucher}
-                  className="w-full mt-3 border-2 border-brand-200 text-brand-700 font-semibold py-3 rounded-xl transition-colors hover:bg-brand-50">
-                  Ninalo vocha — tumia badala yake
-                </button>
-              )}
 
               <div className="flex items-center justify-center gap-2 mt-3">
                 <Shield className="w-3.5 h-3.5 text-gray-400" />
