@@ -87,15 +87,19 @@ export async function POST(request: NextRequest) {
 
     // If site is assigned, verify package is available for this site
     if (session.site_id) {
-      const { data: sitePackage } = await supabaseAdmin
+      const { data: sitePackages, error: sitePackagesError } = await supabaseAdmin
         .from('site_packages')
-        .select('*')
+        .select('package_id')
         .eq('site_id', session.site_id)
-        .eq('package_id', data.packageId)
         .eq('is_active', true)
-        .single()
+      
+      if (sitePackagesError) {
+        throw new Error(`Failed to verify site packages: ${sitePackagesError.message}`)
+      }
 
-      if (!sitePackage) {
+      // An empty assignment means the site uses the global active package list,
+      // matching the package list returned during session creation.
+      if (sitePackages.length > 0 && !sitePackages.some(sp => sp.package_id === data.packageId)) {
         return Response.json(apiError('Package not available for this site', 'PACKAGE_NOT_AVAILABLE'), {
           status: HTTP_STATUS.FORBIDDEN
         })
