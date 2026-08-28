@@ -213,8 +213,12 @@ export const ENV = {
   MALIPOPAY_BASE_URL: process.env.MALIPOPAY_BASE_URL || 'https://core-prod.malipopay.co.tz/api/v1',
   MALIPOPAY_WEBHOOK_SECRET: process.env.MALIPOPAY_WEBHOOK_SECRET,
   
-  OMADA_CONTROLLER_URL: process.env.OMADA_CONTROLLER_URL || 'https://euw1-api-omada-controller-connector.tplinkcloud.com',
+  OMADA_API_URL: process.env.OMADA_API_URL || 'https://euw1-omada-northbound.tplinkcloud.com',
+  OMADA_CLIENT_ID: process.env.OMADA_CLIENT_ID || '',
+  OMADA_CLIENT_SECRET: process.env.OMADA_CLIENT_SECRET || '',
   OMADA_OMADAC_ID: process.env.OMADA_OMADAC_ID || '',
+  OMADA_SITE_ID: process.env.OMADA_SITE_ID || '',
+  OMADA_CONTROLLER_URL: process.env.OMADA_CONTROLLER_URL || '',
   OMADA_USERNAME: process.env.OMADA_USERNAME || '',
   OMADA_PASSWORD: process.env.OMADA_PASSWORD || '',
   OMADA_SITE_NAME: process.env.OMADA_SITE_NAME || 'AASAM SITE',

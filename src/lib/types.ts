@@ -195,6 +195,8 @@ export interface PaymentTransaction {
   authorized_at: string | null
   expires_at: string | null
   duration_seconds: number | null
+  omada_voucher_group_id?: string | null
+  voucher_code?: string | null
   created_at: string
   updated_at: string
 }
@@ -241,6 +243,7 @@ export interface OmadaRedirectParams {
   radioId?: string
   vid?: string
   redirectUrl?: string
+  portalAuthUrl?: string
 }
 
 export interface CreatePortalSessionRequest {
@@ -276,6 +279,7 @@ export interface PaymentStatusResponse {
   status: TransactionStatus
   message?: string
   redirectUrl?: string
+  portalAuthUrl?: string
 }
 
 // ============================================================================

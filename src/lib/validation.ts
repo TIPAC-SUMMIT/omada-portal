@@ -65,7 +65,8 @@ export const omadaRedirectParamsSchema = z.object({
   ssidName: z.string().min(1).max(32),
   radioId: z.string().optional(),
   vid: z.string().optional(),
-  redirectUrl: z.string().url().optional()
+  redirectUrl: z.string().url().optional(),
+  portalAuthUrl: z.string().url().optional()
 })
 
 export const createPortalSessionSchema = z.object({

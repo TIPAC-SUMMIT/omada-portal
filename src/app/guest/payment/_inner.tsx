@@ -12,6 +12,7 @@ export default function PaymentInner() {
   const packageName = searchParams.get('pkg')       || ''
   const amountStr   = searchParams.get('amount')    || ''
   const redirectUrl = searchParams.get('redirect')  || ''
+  const [portalUrl, setPortalUrl] = useState('')
 
   const [status, setStatus]         = useState<TransactionStatus>('PAYMENT_INITIATED')
   const [message, setMessage]       = useState('')
@@ -40,6 +41,7 @@ export default function PaymentInner() {
         setStatus(data.data.status)
         setMessage(data.data.message || '')
         if (data.data.voucherCode) setVoucherCode(data.data.voucherCode)
+        if (data.data.portalUrl) setPortalUrl(data.data.portalUrl)
       }
       const pending = ['PENDING', 'PAYMENT_INITIATED', 'PAYMENT_SUCCESS', 'OMADA_AUTHORIZING']
       if (pending.includes(data.data?.status) && countRef.current < 300) {
@@ -56,8 +58,14 @@ export default function PaymentInner() {
     setCopied(true)
     setTimeout(() => {
       // Redirect back to Omada portal with voucher pre-filled if redirectUrl exists
-      if (redirectUrl) {
-        window.location.href = `${decodeURIComponent(redirectUrl)}&voucher=${encodeURIComponent(voucherCode)}`
+      if (portalUrl) {
+        const target = new URL(portalUrl, window.location.origin)
+        target.searchParams.set('voucher', voucherCode)
+        window.location.href = target.toString()
+      } else if (redirectUrl) {
+        const target = new URL(decodeURIComponent(redirectUrl), window.location.origin)
+        target.searchParams.set('voucher', voucherCode)
+        window.location.href = target.toString()
       }
     }, 1500)
   }
@@ -89,8 +97,8 @@ export default function PaymentInner() {
               : <><Copy className="w-5 h-5" /> Copy Code</>}
           </button>
 
-          {redirectUrl && !copied && (
-            <button onClick={() => window.location.href = decodeURIComponent(redirectUrl)}
+          {(portalUrl || redirectUrl) && !copied && (
+            <button onClick={() => window.location.href = portalUrl || decodeURIComponent(redirectUrl)}
               className="w-full text-gray-500 text-sm flex items-center justify-center gap-1 hover:text-gray-700">
               Go to Wi-Fi Login <ArrowRight className="w-4 h-4" />
             </button>

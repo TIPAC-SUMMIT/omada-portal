@@ -131,11 +131,17 @@ Run migrations in Supabase SQL editor (**Settings → SQL Editor**):
 
 1. Paste and run `supabase/migrations/001_initial_schema.sql`
 2. Paste and run `supabase/migrations/002_transaction_constraints.sql`
+3. Paste and run `supabase/migrations/003_vouchers.sql`
+4. Paste and run `supabase/migrations/004_omada_vouchers.sql`
 
 Or use the migration script (requires `SUPABASE_SERVICE_ROLE_KEY`):
 ```bash
 npm run db:migrate
 ```
+
+Migration `004_omada_vouchers.sql` is required for the live payment flow. It adds
+`voucher_code`, `omada_voucher_group_id`, and `portal_auth_url`. It is additive
+and safe to run after the earlier migrations.
 
 **Create first admin user:**
 ```sql
@@ -196,6 +202,38 @@ Test files are in `src/tests/`. Critical test coverage:
    https://your-domain.vercel.app/api/malipopay/callback
    ```
 4. If MalipoPay provides a webhook signing secret, set `MALIPOPAY_WEBHOOK_SECRET`
+
+---
+
+## Omada External Portal Configuration
+
+Configure the Omada site/SSID captive portal to use the deployed application:
+
+1. Set the external portal URL to:
+   ```
+   https://your-domain.vercel.app/guest/login
+   ```
+2. Enable external portal authentication for the SSID.
+3. Ensure Omada appends the client parameters `clientMac`, `apMac`,
+   `ssidName`, `radioId`, `vid`, `redirectUrl`, and `tp`.
+4. The `tp` parameter must be the Omada portal authentication POST URL. The
+   application stores it in Supabase and posts the voucher to that URL after
+   payment.
+5. Set the Vercel environment variables:
+   ```
+   OMADA_API_URL=https://euw1-omada-northbound.tplinkcloud.com
+   OMADA_CLIENT_ID=...
+   OMADA_CLIENT_SECRET=...
+   OMADA_OMADAC_ID=...
+   OMADA_SITE_ID=6a9022acd869a50d314e27cd
+   ```
+
+The successful flow is: Omada redirects the client to `/guest/login`, Supabase
+stores the captive-portal context, MalipoPay confirms the payment, the server
+creates a one-use Omada voucher through the Northbound API, and the client
+submits that voucher to the stored `tp` endpoint. Vercel must be able to reach
+both Supabase and the Omada Northbound API; the client device must be able to
+reach the Omada portal authentication endpoint.
 
 **⚠️ Missing documentation needed:**
 - Exact webhook payload structure (field names, status values)

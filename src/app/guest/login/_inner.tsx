@@ -22,6 +22,7 @@ export default function GuestLoginInner() {
         radioId:     searchParams.get('radioId')     || undefined,
         vid:         searchParams.get('vid')         || undefined,
         redirectUrl: searchParams.get('redirectUrl') || undefined,
+        portalAuthUrl: searchParams.get('tp') || undefined,
       }
 
       if (!params.clientMac || !params.apMac || !params.ssidName) {

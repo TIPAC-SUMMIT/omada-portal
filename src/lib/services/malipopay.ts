@@ -63,9 +63,6 @@ class RealMalipoPayService implements IMalipoPayService {
     this.apiToken = ENV.MALIPOPAY_API_TOKEN
     this.webhookSecret = ENV.MALIPOPAY_WEBHOOK_SECRET
 
-    if (!this.apiToken) {
-      throw new Error('MALIPOPAY_API_TOKEN environment variable is required')
-    }
   }
 
   async createCollection(request: MalipoPayCollectionRequest): Promise<{
@@ -76,6 +73,9 @@ class RealMalipoPayService implements IMalipoPayService {
     error?: string
   }> {
     try {
+      if (!this.apiToken) {
+        throw new Error('MALIPOPAY_API_TOKEN environment variable is required')
+      }
       const phoneNumber = normalizePhoneNumber(request.phoneNumber)
 
       // MalipoPay payload — we send our WIFI-... ref as the `reference` field.
@@ -208,15 +208,24 @@ class RealMalipoPayService implements IMalipoPayService {
     error?: string
   } {
     try {
-      // Required fields from docs
-      if (!payload.reference || !payload.status || payload.amount === undefined) {
+      // Required fields from docs. Accept numeric strings because webhook
+      // providers commonly serialize amounts as JSON strings.
+      if (typeof payload.reference !== 'string' || !payload.reference ||
+          typeof payload.status !== 'string' || payload.amount === undefined) {
         return { valid: false, error: 'Missing required fields: reference, status, amount' }
       }
 
-      // Status values per docs: "Success" | "Failed"
-      const validStatuses = ['Success', 'Failed']
-      if (!validStatuses.includes(payload.status)) {
+      const normalizedStatus = payload.status.trim().toLowerCase()
+      const validStatuses = ['success', 'failed', 'cancelled', 'canceled']
+      if (!validStatuses.includes(normalizedStatus)) {
         return { valid: false, error: `Unexpected status value: "${payload.status}"` }
+      }
+
+      const amount = typeof payload.amount === 'number'
+        ? payload.amount
+        : Number(payload.amount)
+      if (!Number.isFinite(amount)) {
+        return { valid: false, error: 'Invalid amount' }
       }
 
       // customerReference is our WIFI-... ref (what we sent as `reference` in request)
@@ -229,8 +238,8 @@ class RealMalipoPayService implements IMalipoPayService {
         data: {
           ourReference,
           malipoReference: payload.reference,
-          status: payload.status,
-          amount: payload.amount,
+          status: normalizedStatus,
+          amount,
           phoneNumber: payload.customer?.phoneNumber || '',
           mno: payload.customer?.mno || '',
           timestamp: payload.timestamp || ''
@@ -334,10 +343,11 @@ export const malipoPayService = createMalipoPayService()
 
 /** Map MalipoPay webhook status to our internal TransactionStatus */
 export function mapMalipoPayStatus(status: string): string {
-  // MalipoPay uses "Success" / "Failed" (capital S/F)
-  switch (status) {
-    case 'Success': return 'PAYMENT_SUCCESS'
-    case 'Failed':  return 'PAYMENT_FAILED'
+  switch (status.trim().toLowerCase()) {
+    case 'success': return 'PAYMENT_SUCCESS'
+    case 'failed':
+    case 'cancelled':
+    case 'canceled': return 'PAYMENT_FAILED'
     default:        return 'PAYMENT_FAILED'
   }
 }

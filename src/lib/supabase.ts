@@ -137,6 +137,7 @@ export type Database = {
           radio_id: string | null
           vid: string | null
           redirect_url: string | null
+          portal_auth_url: string | null
           selected_package_id: string | null
           status: 'CREATED' | 'PACKAGE_SELECTED' | 'PAYMENT_INITIATED' | 'PAYMENT_SUCCESS' | 'AUTHORIZED' | 'EXPIRED' | 'FAILED'
           client_ip: string | null
@@ -155,6 +156,7 @@ export type Database = {
           radio_id?: string | null
           vid?: string | null
           redirect_url?: string | null
+          portal_auth_url?: string | null
           selected_package_id?: string | null
           status?: 'CREATED' | 'PACKAGE_SELECTED' | 'PAYMENT_INITIATED' | 'PAYMENT_SUCCESS' | 'AUTHORIZED' | 'EXPIRED' | 'FAILED'
           client_ip?: string | null
@@ -173,6 +175,7 @@ export type Database = {
           radio_id?: string | null
           vid?: string | null
           redirect_url?: string | null
+          portal_auth_url?: string | null
           selected_package_id?: string | null
           status?: 'CREATED' | 'PACKAGE_SELECTED' | 'PAYMENT_INITIATED' | 'PAYMENT_SUCCESS' | 'AUTHORIZED' | 'EXPIRED' | 'FAILED'
           client_ip?: string | null
@@ -203,6 +206,8 @@ export type Database = {
           authorized_at: string | null
           expires_at: string | null
           duration_seconds: number | null
+          omada_voucher_group_id: string | null
+          voucher_code: string | null
           created_at: string
           updated_at: string
         }
@@ -226,6 +231,8 @@ export type Database = {
           authorized_at?: string | null
           expires_at?: string | null
           duration_seconds?: number | null
+          omada_voucher_group_id?: string | null
+          voucher_code?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -249,6 +256,8 @@ export type Database = {
           authorized_at?: string | null
           expires_at?: string | null
           duration_seconds?: number | null
+          omada_voucher_group_id?: string | null
+          voucher_code?: string | null
           created_at?: string
           updated_at?: string
         }

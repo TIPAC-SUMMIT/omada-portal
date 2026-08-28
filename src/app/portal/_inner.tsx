@@ -37,13 +37,12 @@ export default function PortalPage() {
 
   // Build the submit URL that Omada controller listens on
   // Omada provides the submit base via the page config — for now we use the tp param
-  const omadaSubmitUrl = tp
-    ? decodeURIComponent(tp)
-    : `https://192.168.0.56/5b0175a0ecd5b6c5f6926577f0856289/api/v2/hotspot/extPortal/auth`
+  const omadaSubmitUrl = tp ? decodeURIComponent(tp) : ''
 
   const handleVoucherLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!voucher.trim()) { setError('Please enter your voucher code'); return }
+    if (!omadaSubmitUrl) { setError('Wi-Fi controller login URL is missing. Please reconnect to Wi-Fi and try again.'); return }
     setLoading(true); setError('')
 
     // Submit to Omada controller directly (standard portal submit)
@@ -54,6 +53,7 @@ export default function PortalPage() {
     const fields: Record<string, string> = {
       voucherCode: voucher.trim(),
       clientMac, apMac, ssidName, radioId, vid,
+      redirectUrl,
       authType: '3', // VOUCHER_ACCESS_TYPE
     }
     Object.entries(fields).forEach(([k, v]) => {
@@ -69,6 +69,7 @@ export default function PortalPage() {
   const handleUserLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!username.trim() || !password) { setError('Enter username and password'); return }
+    if (!omadaSubmitUrl) { setError('Wi-Fi controller login URL is missing. Please reconnect to Wi-Fi and try again.'); return }
     setLoading(true); setError('')
 
     const form = document.createElement('form')
@@ -79,6 +80,7 @@ export default function PortalPage() {
       username: username.trim(),
       password,
       clientMac, apMac, ssidName, radioId, vid,
+      redirectUrl,
       authType: '5', // LOCAL_USER_ACCESS_TYPE
     }
     Object.entries(fields).forEach(([k, v]) => {
@@ -100,6 +102,7 @@ export default function PortalPage() {
     if (radioId)     params.set('radioId', radioId)
     if (vid)         params.set('vid', vid)
     if (redirectUrl) params.set('redirectUrl', redirectUrl)
+    if (tp)          params.set('tp', tp)
 
     window.location.href = `/guest/login?${params.toString()}`
   }

@@ -16,7 +16,7 @@ export async function GET(
 
     const { data: transaction, error } = await supabaseAdmin
       .from('payment_transactions')
-      .select('id, reference, status, error_message, portal_session_id')
+      .select('id, reference, status, error_message, voucher_code, portal_session_id')
       .eq('reference', reference)
       .single()
 
@@ -24,14 +24,11 @@ export async function GET(
       return Response.json(apiError('Transaction not found', 'TRANSACTION_NOT_FOUND'), { status: HTTP_STATUS.NOT_FOUND })
     }
 
-    // Extract voucher code if stored (stored as "VOUCHER:CODE" in error_message field temporarily)
-    let voucherCode: string | undefined
-    if (transaction.error_message?.startsWith('VOUCHER:')) {
-      voucherCode = transaction.error_message.replace('VOUCHER:', '')
-    }
+    const voucherCode = transaction.voucher_code || undefined
 
     let message: string
     let redirectUrl: string | undefined
+    let portalUrl: string | undefined
 
     switch (transaction.status) {
       case 'PENDING':            message = 'Sending payment prompt to your phone…'; break
@@ -42,8 +39,23 @@ export async function GET(
         message = voucherCode ? 'Payment successful! Copy your voucher code.' : 'Internet access activated!'
         if (transaction.portal_session_id) {
           const { data: ps } = await supabaseAdmin
-            .from('portal_sessions').select('redirect_url').eq('id', transaction.portal_session_id).single()
+            .from('portal_sessions')
+            .select('client_mac, ap_mac, ssid_name, radio_id, vid, redirect_url, portal_auth_url')
+            .eq('id', transaction.portal_session_id)
+            .single()
           redirectUrl = ps?.redirect_url ?? undefined
+          if (ps?.portal_auth_url) {
+            const params = new URLSearchParams({
+              clientMac: ps.client_mac,
+              apMac: ps.ap_mac,
+              ssidName: ps.ssid_name,
+              tp: ps.portal_auth_url,
+            })
+            if (ps.radio_id) params.set('radioId', ps.radio_id)
+            if (ps.vid) params.set('vid', ps.vid)
+            if (ps.redirect_url) params.set('redirectUrl', ps.redirect_url)
+            portalUrl = `/portal?${params.toString()}`
+          }
         }
         break
       case 'PAYMENT_FAILED':     message = 'Payment failed. Please try again.'; break
@@ -59,7 +71,8 @@ export async function GET(
       status: transaction.status,
       message,
       ...(voucherCode  && { voucherCode }),
-      ...(redirectUrl  && { redirectUrl })
+      ...(redirectUrl  && { redirectUrl }),
+      ...(portalUrl && { portalUrl })
     }))
   } catch (error) {
     logError(error, 'Payment status check')
