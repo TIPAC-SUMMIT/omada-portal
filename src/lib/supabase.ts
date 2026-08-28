@@ -137,6 +137,9 @@ export type Database = {
           client_mac: string
           ap_mac: string
           ssid_name: string
+          site_name: string | null
+          portal_timestamp: string | null
+          gateway_mac: string | null
           radio_id: string | null
           vid: string | null
           redirect_url: string | null
@@ -156,6 +159,9 @@ export type Database = {
           client_mac: string
           ap_mac: string
           ssid_name: string
+          site_name?: string | null
+          portal_timestamp?: string | null
+          gateway_mac?: string | null
           radio_id?: string | null
           vid?: string | null
           redirect_url?: string | null
@@ -175,6 +181,9 @@ export type Database = {
           client_mac?: string
           ap_mac?: string
           ssid_name?: string
+          site_name?: string | null
+          portal_timestamp?: string | null
+          gateway_mac?: string | null
           radio_id?: string | null
           vid?: string | null
           redirect_url?: string | null

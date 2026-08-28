@@ -16,6 +16,9 @@ export default function PortalPage() {
   const clientMac  = searchParams.get('clientMac')  || ''
   const apMac      = searchParams.get('apMac')      || ''
   const ssidName   = searchParams.get('ssidName')   || ''
+  const site        = searchParams.get('site')      || ''
+  const t           = searchParams.get('t')          || ''
+  const gatewayMac  = searchParams.get('gatewayMac') || ''
   const radioId    = searchParams.get('radioId')    || ''
   const vid        = searchParams.get('vid')        || ''
   const redirectUrl = searchParams.get('redirectUrl') || ''
@@ -52,9 +55,9 @@ export default function PortalPage() {
 
     const fields: Record<string, string> = {
       voucherCode: voucher.trim(),
-      clientMac, apMac, ssidName, radioId, vid,
+      clientMac, apMac, ssidName, site, t, gatewayMac, radioId, vid,
       redirectUrl,
-      authType: '3', // VOUCHER_ACCESS_TYPE
+      authType: '4', // External portal authorization
     }
     Object.entries(fields).forEach(([k, v]) => {
       if (!v) return
@@ -79,9 +82,9 @@ export default function PortalPage() {
     const fields: Record<string, string> = {
       username: username.trim(),
       password,
-      clientMac, apMac, ssidName, radioId, vid,
+      clientMac, apMac, ssidName, site, t, gatewayMac, radioId, vid,
       redirectUrl,
-      authType: '5', // LOCAL_USER_ACCESS_TYPE
+      authType: '4', // External portal authorization
     }
     Object.entries(fields).forEach(([k, v]) => {
       if (!v) return
@@ -99,6 +102,9 @@ export default function PortalPage() {
     if (clientMac)   params.set('clientMac', clientMac)
     if (apMac)       params.set('apMac', apMac)
     if (ssidName)    params.set('ssidName', ssidName)
+    if (site)        params.set('site', site)
+    if (t)           params.set('t', t)
+    if (gatewayMac)  params.set('gatewayMac', gatewayMac)
     if (radioId)     params.set('radioId', radioId)
     if (vid)         params.set('vid', vid)
     if (redirectUrl) params.set('redirectUrl', redirectUrl)

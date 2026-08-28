@@ -241,6 +241,9 @@ export interface OmadaRedirectParams {
   clientMac: string
   apMac: string
   ssidName: string
+  site?: string
+  t?: string
+  gatewayMac?: string
   radioId?: string
   vid?: string
   redirectUrl?: string

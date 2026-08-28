@@ -40,7 +40,7 @@ export async function GET(
         if (transaction.portal_session_id) {
           const { data: ps } = await supabaseAdmin
             .from('portal_sessions')
-            .select('client_mac, ap_mac, ssid_name, radio_id, vid, redirect_url, portal_auth_url')
+            .select('client_mac, ap_mac, ssid_name, site_name, portal_timestamp, gateway_mac, radio_id, vid, redirect_url, portal_auth_url')
             .eq('id', transaction.portal_session_id)
             .single()
           redirectUrl = ps?.redirect_url ?? undefined
@@ -51,6 +51,9 @@ export async function GET(
               ssidName: ps.ssid_name,
               tp: ps.portal_auth_url,
             })
+            if (ps.site_name) params.set('site', ps.site_name)
+            if (ps.portal_timestamp) params.set('t', ps.portal_timestamp)
+            if (ps.gateway_mac) params.set('gatewayMac', ps.gateway_mac)
             if (ps.radio_id) params.set('radioId', ps.radio_id)
             if (ps.vid) params.set('vid', ps.vid)
             if (ps.redirect_url) params.set('redirectUrl', ps.redirect_url)

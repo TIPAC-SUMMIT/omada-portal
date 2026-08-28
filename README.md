@@ -134,6 +134,7 @@ Run migrations in Supabase SQL editor (**Settings → SQL Editor**):
 3. Paste and run `supabase/migrations/003_vouchers.sql`
 4. Paste and run `supabase/migrations/004_omada_vouchers.sql`
 5. Paste and run `supabase/migrations/005_omada_site_mapping.sql`
+6. Paste and run `supabase/migrations/006_omada_portal_parameters.sql`
 
 Or use the migration script (requires `SUPABASE_SERVICE_ROLE_KEY`):
 ```bash
@@ -219,10 +220,11 @@ Configure the Omada site/SSID captive portal to use the deployed application:
    ```
 2. Enable external portal authentication for the SSID.
 3. Ensure Omada appends the client parameters `clientMac`, `apMac`,
-   `ssidName`, `radioId`, `vid`, `redirectUrl`, and `tp`.
-4. The `tp` parameter must be the Omada portal authentication POST URL. The
-   application stores it in Supabase and posts the voucher to that URL after
-   payment.
+   `ssidName`, `radioId`, `vid`, `site`, `t`, `gatewayMac`, and `redirectUrl`.
+4. If the controller supplies a `tp` authentication URL, the application stores
+   it in Supabase and uses it for the final portal submission. The application
+   also preserves the official `site`, `t`, and gateway parameters through the
+   payment flow.
 5. Set the Vercel environment variables:
    ```
    OMADA_API_URL=https://euw1-omada-northbound.tplinkcloud.com
