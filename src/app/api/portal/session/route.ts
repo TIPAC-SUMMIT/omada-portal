@@ -35,14 +35,13 @@ export async function POST(request: NextRequest) {
     const sessionTokenHash = hashSessionToken(sessionToken)
     const expiresAt = addMinutes(PORTAL_SESSION_EXPIRY_MINUTES)
 
-    // Find site by SSID name (basic matching for MVP)
-    // In production, you'd match by AP MAC or more sophisticated rules
+    // Match the captive-portal session to the configured Northbound site.
     let site: Site | null = null
     const { data: sites } = await supabaseAdmin
       .from('sites')
       .select('*')
+      .eq('omada_site_id', process.env.OMADA_SITE_ID || '')
       .eq('status', 'ACTIVE')
-      .limit(1)
       .single()
     
     if (sites) {

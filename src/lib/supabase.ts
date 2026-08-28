@@ -61,6 +61,7 @@ export type Database = {
           id: string
           name: string
           slug: string
+          omada_site_id: string | null
           location: string | null
           description: string | null
           status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
@@ -72,6 +73,7 @@ export type Database = {
           id?: string
           name: string
           slug: string
+          omada_site_id?: string | null
           location?: string | null
           description?: string | null
           status?: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
@@ -83,6 +85,7 @@ export type Database = {
           id?: string
           name?: string
           slug?: string
+          omada_site_id?: string | null
           location?: string | null
           description?: string | null
           status?: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'

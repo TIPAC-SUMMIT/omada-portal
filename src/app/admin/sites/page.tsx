@@ -9,7 +9,7 @@ export default function SitesPage() {
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Site | null>(null)
-  const [form, setForm] = useState({ name: '', slug: '', location: '', description: '', status: 'ACTIVE' as Site['status'] })
+  const [form, setForm] = useState({ name: '', slug: '', omada_site_id: '', location: '', description: '', status: 'ACTIVE' as Site['status'] })
   const [saving, setSaving] = useState(false)
 
   const token = () => localStorage.getItem('admin_token')
@@ -27,8 +27,8 @@ export default function SitesPage() {
 
   useEffect(() => { load() }, [])
 
-  const openNew = () => { setEditing(null); setForm({ name: '', slug: '', location: '', description: '', status: 'ACTIVE' }); setShowForm(true) }
-  const openEdit = (s: Site) => { setEditing(s); setForm({ name: s.name, slug: s.slug, location: s.location ?? '', description: s.description ?? '', status: s.status }); setShowForm(true) }
+  const openNew = () => { setEditing(null); setForm({ name: '', slug: '', omada_site_id: '', location: '', description: '', status: 'ACTIVE' }); setShowForm(true) }
+  const openEdit = (s: Site) => { setEditing(s); setForm({ name: s.name, slug: s.slug, omada_site_id: s.omada_site_id ?? '', location: s.location ?? '', description: s.description ?? '', status: s.status }); setShowForm(true) }
 
   const save = async () => {
     setSaving(true)
@@ -73,6 +73,7 @@ export default function SitesPage() {
             <thead className="bg-gray-50 text-gray-600 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Omada Site ID</th>
                 <th className="px-4 py-3 font-medium">Slug</th>
                 <th className="px-4 py-3 font-medium">Location</th>
                 <th className="px-4 py-3 font-medium">Status</th>
@@ -81,10 +82,11 @@ export default function SitesPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {sites.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No sites yet</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No sites yet</td></tr>
               ) : sites.map(s => (
                 <tr key={s.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
+                  <td className="px-4 py-3 text-gray-500 font-mono text-xs">{s.omada_site_id ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-500 font-mono text-xs">{s.slug}</td>
                   <td className="px-4 py-3 text-gray-500">{s.location ?? '—'}</td>
                   <td className="px-4 py-3">{statusBadge(s.status)}</td>

@@ -82,6 +82,7 @@ export interface Site {
   id: string
   name: string
   slug: string
+  omada_site_id: string | null
   location: string | null
   description: string | null
   status: SiteStatus

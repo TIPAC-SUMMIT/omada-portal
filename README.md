@@ -133,6 +133,7 @@ Run migrations in Supabase SQL editor (**Settings → SQL Editor**):
 2. Paste and run `supabase/migrations/002_transaction_constraints.sql`
 3. Paste and run `supabase/migrations/003_vouchers.sql`
 4. Paste and run `supabase/migrations/004_omada_vouchers.sql`
+5. Paste and run `supabase/migrations/005_omada_site_mapping.sql`
 
 Or use the migration script (requires `SUPABASE_SERVICE_ROLE_KEY`):
 ```bash
@@ -142,6 +143,9 @@ npm run db:migrate
 Migration `004_omada_vouchers.sql` is required for the live payment flow. It adds
 `voucher_code`, `omada_voucher_group_id`, and `portal_auth_url`. It is additive
 and safe to run after the earlier migrations.
+
+Migration `005_omada_site_mapping.sql` adds `sites.omada_site_id`. Set this
+column to the Omada site ID returned by the Northbound API for every live site.
 
 **Create first admin user:**
 ```sql
@@ -323,24 +327,13 @@ Add all variables from `.env.example` in **Vercel → Project → Settings → E
 | **Serverless functions** | All API routes run as serverless functions. No persistent state — all state is in Supabase. ✅ |
 | **Webhook delivery** | Vercel functions have a 10-30s timeout. MalipoPay webhook will complete within that. ✅ |
 | **Database connections** | Supabase JS client works in serverless. Connection pooling is handled by Supabase. ✅ |
-| **Omada controller (private LAN)** | Vercel cannot reach a private LAN controller directly. Requires site connector agent. ⚠️ |
+| **Omada Northbound API** | Voucher creation runs server-side through the configured Omada Northbound API. ✅ |
 | **Background jobs** | Session expiry is checked on-demand (no background job needed for MVP). ✅ |
 | **Rate limiting** | In-memory rate limiter in middleware resets per function instance. Use Redis (`REDIS_URL`) for production multi-instance. ⚠️ |
 
-### Private Omada Controller Architecture
-
-If your controller is on a private LAN:
-```
-Vercel (API)
-    │ HTTPS
-    ▼
-Site Connector Agent (runs on local server/Raspberry Pi at venue)
-    │ local network
-    ▼
-Omada Controller (private LAN: 192.168.x.x)
-```
-
-Set `use_site_connector = true` and `site_connector_url` on the controller record. The agent is a simple Express/Node app that forwards requests from Vercel to the local Omada controller.
+The deployed app does not require a private controller IP or site connector. Vercel
+communicates with the Omada Northbound API, while the guest device submits the
+voucher to the `tp` URL supplied by Omada's external-portal redirect.
 
 ---
 

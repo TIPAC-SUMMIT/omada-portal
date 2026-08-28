@@ -218,10 +218,6 @@ export const ENV = {
   OMADA_CLIENT_SECRET: process.env.OMADA_CLIENT_SECRET || '',
   OMADA_OMADAC_ID: process.env.OMADA_OMADAC_ID || '',
   OMADA_SITE_ID: process.env.OMADA_SITE_ID || '',
-  OMADA_CONTROLLER_URL: process.env.OMADA_CONTROLLER_URL || '',
-  OMADA_USERNAME: process.env.OMADA_USERNAME || '',
-  OMADA_PASSWORD: process.env.OMADA_PASSWORD || '',
-  OMADA_SITE_NAME: process.env.OMADA_SITE_NAME || 'AASAM SITE',
 
   APP_URL: process.env.NEXT_PUBLIC_APP_URL!,
   PORTAL_SESSION_SECRET: process.env.PORTAL_SESSION_SECRET!,
