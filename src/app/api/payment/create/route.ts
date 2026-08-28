@@ -18,6 +18,7 @@ import {
   addMinutes
 } from '@/lib/utils'
 import { HTTP_STATUS, PAYMENT_TIMEOUT_MINUTES } from '@/lib/constants'
+import { buildPaymentDescription } from '@/lib/payment-description'
 
 async function getPortalSession(authHeader: string | null) {
   if (!authHeader?.startsWith('Bearer ')) return null
@@ -231,20 +232,3 @@ export async function POST(request: NextRequest) {
 }
 
 // ── Payment description builder ───────────────────────────────────────────────
-function buildPaymentDescription(packageName: string, priceTzs: number, durationSeconds: number): string {
-  const duration = formatDurationShort(durationSeconds)
-  return `TIPAC SUMMIT Wi-Fi - ${packageName} (${duration}) - TZS ${priceTzs.toLocaleString()}`
-}
-
-function formatDurationShort(seconds: number): string {
-  if (seconds >= 86400 && seconds % 86400 === 0) {
-    const d = seconds / 86400
-    return `${d} day${d > 1 ? 's' : ''}`
-  }
-  if (seconds >= 3600 && seconds % 3600 === 0) {
-    const h = seconds / 3600
-    return `${h} hr${h > 1 ? 's' : ''}`
-  }
-  const m = Math.round(seconds / 60)
-  return `${m} min`
-}
