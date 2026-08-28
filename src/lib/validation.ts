@@ -134,7 +134,7 @@ export const changePasswordSchema = z.object({
 export const createSiteSchema = z.object({
   name: z.string().min(1).max(100),
   slug: slugSchema,
-  omada_site_id: z.string().min(1).max(100).optional(),
+  omada_site_id: z.string().min(1).max(100),
   location: z.string().max(200).optional(),
   description: z.string().max(500).optional(),
   status: siteStatusSchema.default('ACTIVE'),

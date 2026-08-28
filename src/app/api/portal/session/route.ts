@@ -58,8 +58,17 @@ export async function POST(request: NextRequest) {
         .eq('status', 'ACTIVE')
         .maybeSingle()
       sites = omadaSite
+      if (!sites) {
+        const { data: omadaSiteById } = await supabaseAdmin
+          .from('sites')
+          .select('*')
+          .eq('omada_site_id', params.site)
+          .eq('status', 'ACTIVE')
+          .maybeSingle()
+        sites = omadaSiteById
+      }
     }
-    if (!sites) {
+    if (!params.site && !sites) {
       const { data: configuredSite } = await supabaseAdmin
         .from('sites')
         .select('*')
@@ -67,6 +76,12 @@ export async function POST(request: NextRequest) {
         .eq('status', 'ACTIVE')
         .maybeSingle()
       sites = configuredSite
+    }
+
+    if (!sites) {
+      return Response.json(apiError('This Omada site is not configured in the portal', 'SITE_NOT_CONFIGURED'), {
+        status: HTTP_STATUS.BAD_REQUEST
+      })
     }
     
     if (sites) {
