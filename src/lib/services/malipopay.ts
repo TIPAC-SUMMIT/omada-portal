@@ -216,7 +216,10 @@ class RealMalipoPayService implements IMalipoPayService {
       }
 
       const normalizedStatus = payload.status.trim().toLowerCase()
-      const validStatuses = ['success', 'failed', 'cancelled', 'canceled']
+      const validStatuses = [
+        'success', 'successful', 'paid', 'completed',
+        'failed', 'cancelled', 'canceled'
+      ]
       if (!validStatuses.includes(normalizedStatus)) {
         return { valid: false, error: `Unexpected status value: "${payload.status}"` }
       }
@@ -344,7 +347,10 @@ export const malipoPayService = createMalipoPayService()
 /** Map MalipoPay webhook status to our internal TransactionStatus */
 export function mapMalipoPayStatus(status: string): string {
   switch (status.trim().toLowerCase()) {
-    case 'success': return 'PAYMENT_SUCCESS'
+    case 'success':
+    case 'successful':
+    case 'paid':
+    case 'completed': return 'PAYMENT_SUCCESS'
     case 'failed':
     case 'cancelled':
     case 'canceled': return 'PAYMENT_FAILED'

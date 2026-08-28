@@ -8,6 +8,9 @@ describe('mapMalipoPayStatus', () => {
   it('maps Success to PAYMENT_SUCCESS', () => {
     expect(mapMalipoPayStatus('Success')).toBe('PAYMENT_SUCCESS')
   })
+  it('maps provider SUCCESSFUL status to PAYMENT_SUCCESS', () => {
+    expect(mapMalipoPayStatus('SUCCESSFUL')).toBe('PAYMENT_SUCCESS')
+  })
   it('maps Failed to PAYMENT_FAILED', () => {
     expect(mapMalipoPayStatus('Failed')).toBe('PAYMENT_FAILED')
   })

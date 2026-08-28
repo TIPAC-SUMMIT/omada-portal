@@ -99,9 +99,14 @@ export async function POST(request: NextRequest) {
     return Response.json({ received: true }, { status: HTTP_STATUS.OK })
   }
 
-  // ── 6. Transaction must still be in a pending state ────────────────────────
-  const processable = ['PENDING', 'PAYMENT_INITIATED']
-  if (!processable.includes(transaction.status)) {
+  // ── 6. Process normal payments and late provider success callbacks ─────────
+  // A provider can confirm a payment after our initiation request timed out.
+  // Allow that success through when no webhook has previously been processed.
+  const mappedStatus = mapMalipoPayStatus(malipoStatus)
+  const lateSuccess = mappedStatus === 'PAYMENT_SUCCESS' &&
+    ['PAYMENT_FAILED', 'PAYMENT_TIMEOUT', 'EXPIRED'].includes(transaction.status)
+  const processable = ['PENDING', 'PAYMENT_INITIATED'].includes(transaction.status) || lateSuccess
+  if (!processable) {
     console.warn(JSON.stringify({
       level: 'warn', event: 'WEBHOOK_UNEXPECTED_STATE',
       requestId, ourReference, transactionStatus: transaction.status
@@ -134,8 +139,6 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 8. Map status and atomically claim the webhook ─────────────────────────
-  const mappedStatus = mapMalipoPayStatus(malipoStatus)
-
   const { data: claimed, error: claimError } = await supabaseAdmin
     .from('payment_transactions')
     .update({
