@@ -70,6 +70,14 @@ export async function GET(
             try {
               const { data: site } = await supabaseAdmin.from('sites').select('omada_site_id').eq('id', claimed.site_id).maybeSingle()
               const voucher = await createOmadaVoucher(claimed.reference, claimed.duration_seconds, site?.omada_site_id ?? undefined)
+              const { error: voucherError } = await supabaseAdmin
+                .from('payment_transactions')
+                .update({
+                  voucher_code: voucher.code,
+                  omada_voucher_group_id: voucher.groupId
+                })
+                .eq('id', claimed.id)
+              if (voucherError) throw voucherError
               const { data: portalSession } = await supabaseAdmin
                 .from('portal_sessions')
                 .select('client_mac, ap_mac, ssid_name, site_name, radio_id')
@@ -87,16 +95,42 @@ export async function GET(
                 site: portalSession.site_name,
                 durationSeconds: claimed.duration_seconds,
               })
-              await supabaseAdmin.from('payment_transactions').update({
+              const authorizedAt = new Date().toISOString()
+              const expiresAt = new Date(
+                new Date(authorizedAt).getTime() + claimed.duration_seconds * 1000
+              ).toISOString()
+              const { error: authorizationError } = await supabaseAdmin
+                .from('client_authorizations')
+                .upsert({
+                  transaction_id: claimed.id,
+                  site_id: claimed.site_id,
+                  portal_session_id: claimed.portal_session_id,
+                  client_mac: portalSession.client_mac,
+                  ap_mac: portalSession.ap_mac,
+                  ssid_name: portalSession.ssid_name,
+                  status: 'ACTIVE',
+                  duration_seconds: claimed.duration_seconds,
+                  authorized_at: authorizedAt,
+                  expires_at: expiresAt,
+                  revoked_at: null,
+                  revoke_reason: null
+                }, { onConflict: 'transaction_id' })
+              if (authorizationError) throw authorizationError
+              const { error: transactionError } = await supabaseAdmin.from('payment_transactions').update({
                 status: 'AUTHORIZED',
                 voucher_code: voucher.code,
                 omada_voucher_group_id: voucher.groupId,
-                authorized_at: new Date().toISOString(),
-                expires_at: new Date(Date.now() + claimed.duration_seconds * 1000).toISOString(),
+                authorized_at: authorizedAt,
+                expires_at: expiresAt,
                 error_code: null,
                 error_message: null
               }).eq('id', claimed.id)
-              await supabaseAdmin.from('portal_sessions').update({ status: 'AUTHORIZED' }).eq('id', claimed.portal_session_id)
+              if (transactionError) throw transactionError
+              const { error: sessionError } = await supabaseAdmin
+                .from('portal_sessions')
+                .update({ status: 'AUTHORIZED' })
+                .eq('id', claimed.portal_session_id)
+              if (sessionError) throw sessionError
             } catch (authorizationError) {
               await supabaseAdmin.from('payment_transactions').update({
                 status: 'AUTHORIZATION_FAILED',

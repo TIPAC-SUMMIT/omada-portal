@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         client_mac: params.clientMac,
         ap_mac: params.apMac,
         ssid_name: params.ssidName,
-        site_name: params.site || null,
+        site_name: sites.name,
         portal_timestamp: params.t || null,
         gateway_mac: params.gatewayMac || null,
         radio_id: params.radioId || null,

@@ -246,6 +246,14 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
       transaction.duration_seconds,
       site?.omada_site_id ?? undefined
     )
+    const { error: voucherError } = await supabaseAdmin
+      .from('payment_transactions')
+      .update({
+        voucher_code: voucher.code,
+        omada_voucher_group_id: voucher.groupId
+      })
+      .eq('id', transaction.id)
+    if (voucherError) throw voucherError
 
     const { data: portalSession } = await supabaseAdmin
       .from('portal_sessions')
@@ -267,25 +275,47 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
       durationSeconds: transaction.duration_seconds,
     })
 
-    // Mark transaction AUTHORIZED
-    await supabaseAdmin
+    const authorizedAt = now()
+    const expiresAt = new Date(
+      new Date(authorizedAt).getTime() + transaction.duration_seconds * 1000
+    ).toISOString()
+    const { error: authorizationError } = await supabaseAdmin
+      .from('client_authorizations')
+      .upsert({
+        transaction_id: transaction.id,
+        site_id: transaction.site_id,
+        portal_session_id: transaction.portal_session_id,
+        client_mac: portalSession.client_mac,
+        ap_mac: portalSession.ap_mac,
+        ssid_name: portalSession.ssid_name,
+        status: 'ACTIVE',
+        duration_seconds: transaction.duration_seconds,
+        authorized_at: authorizedAt,
+        expires_at: expiresAt,
+        revoked_at: null,
+        revoke_reason: null
+      }, { onConflict: 'transaction_id' })
+    if (authorizationError) throw authorizationError
+
+    const { error: transactionError } = await supabaseAdmin
       .from('payment_transactions')
       .update({
         status: 'AUTHORIZED',
         voucher_code: voucher.code,
         omada_voucher_group_id: voucher.groupId,
-        authorized_at: now(),
-        expires_at: new Date(Date.now() + transaction.duration_seconds * 1000).toISOString(),
+        authorized_at: authorizedAt,
+        expires_at: expiresAt,
         error_code: null,
         error_message: null
       })
       .eq('id', transaction.id)
+    if (transactionError) throw transactionError
 
-    // Mark portal session AUTHORIZED
-    await supabaseAdmin
+    const { error: sessionError } = await supabaseAdmin
       .from('portal_sessions')
       .update({ status: 'AUTHORIZED' })
       .eq('id', transaction.portal_session_id)
+    if (sessionError) throw sessionError
 
     await supabaseAdmin.from('audit_logs').insert({
       action: 'CLIENT_AUTHORIZED', transaction_id: transaction.id,
