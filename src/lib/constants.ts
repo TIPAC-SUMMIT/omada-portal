@@ -218,6 +218,7 @@ export const ENV = {
   OMADA_CLIENT_SECRET: process.env.OMADA_CLIENT_SECRET || '',
   OMADA_OMADAC_ID: process.env.OMADA_OMADAC_ID || '',
   OMADA_SITE_ID: process.env.OMADA_SITE_ID || '',
+  OMADA_SITE_NAME: process.env.OMADA_SITE_NAME || '',
   OMADA_CONTROLLER_URL: process.env.OMADA_CONTROLLER_URL || '',
   OMADA_CONTROLLER_ID: process.env.OMADA_CONTROLLER_ID || '',
   OMADA_OPERATOR_USERNAME: process.env.OMADA_OPERATOR_USERNAME || '',

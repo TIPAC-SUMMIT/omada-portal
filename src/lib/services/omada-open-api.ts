@@ -241,7 +241,7 @@ export async function authorizeOmadaClient(input: OmadaClientAuthorization): Pro
         apMac: input.apMac,
         ssidName: input.ssidName,
         radioId: input.radioId,
-        site: input.site,
+        site: ENV.OMADA_SITE_NAME || input.site,
         time: expiryMicros,
         authType: 4,
       }),
