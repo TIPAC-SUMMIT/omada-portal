@@ -63,14 +63,11 @@ export async function GET(request: NextRequest) {
     const todayTransactions = todayTxRows?.length ?? 0
     const revenueToday = todayTxRows?.filter(r => r.status === 'AUTHORIZED').reduce((s, r) => s + r.amount_tzs, 0) ?? 0
 
-    // Daily sales detail is limited to confirmed transactions created today.
     let dailySalesQuery = supabaseAdmin
       .from('payment_transactions')
-      .select('id,reference,phone_number,amount_tzs,created_at,site_id,package_id,sites!payment_transactions_site_id_fkey(name),packages!payment_transactions_package_id_fkey(name)')
+      .select('amount_tzs,site_id,package_id,sites!payment_transactions_site_id_fkey(name),packages!payment_transactions_package_id_fkey(name)')
       .eq('status', 'AUTHORIZED')
       .gte('created_at', todayISO)
-      .order('created_at', { ascending: false })
-      .limit(500)
     if (siteFilter) dailySalesQuery = dailySalesQuery.in('site_id', siteFilter)
     const { data: dailySales } = await dailySalesQuery
 
@@ -137,15 +134,6 @@ export async function GET(request: NextRequest) {
       },
       dailySiteStats: [...dailySiteMap.values()].sort((a, b) => b.amount - a.amount),
       dailyPackageStats: [...dailyPackageMap.values()].sort((a, b) => b.sales - a.sales),
-      dailySales: (dailySales ?? []).map((sale: any) => ({
-        id: sale.id,
-        reference: sale.reference,
-        phoneNumber: sale.phone_number,
-        amount: sale.amount_tzs,
-        createdAt: sale.created_at,
-        siteName: (Array.isArray(sale.sites) ? sale.sites[0] : sale.sites)?.name ?? 'Unknown site',
-        packageName: (Array.isArray(sale.packages) ? sale.packages[0] : sale.packages)?.name ?? 'Unknown package'
-      })),
       siteStats: siteStats.sort((a, b) => b.revenue - a.revenue),
       packageStats: packageStats.sort((a, b) => b.sales - a.sales)
     }))

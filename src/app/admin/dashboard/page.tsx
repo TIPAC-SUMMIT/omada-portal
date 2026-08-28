@@ -13,7 +13,6 @@ interface Stats {
 interface SiteStat { siteId: string; siteName: string; revenue: number; transactions: number; activeClients: number }
 interface PkgStat  { packageId: string; packageName: string; sales: number; revenue: number }
 interface DailyStat { siteId?: string; packageId?: string; siteName?: string; packageName?: string; sales: number; amount: number }
-interface DailySale { id: string; reference: string; phoneNumber: string; amount: number; createdAt: string; siteName: string; packageName: string }
 
 function StatCard({ icon: Icon, label, value, color = 'blue' }: {
   icon: React.ElementType; label: string; value: string | number; color?: string
@@ -39,7 +38,6 @@ export default function DashboardPage() {
   const [pkgStats, setPkgStats] = useState<PkgStat[]>([])
   const [dailySiteStats, setDailySiteStats] = useState<DailyStat[]>([])
   const [dailyPackageStats, setDailyPackageStats] = useState<DailyStat[]>([])
-  const [dailySales, setDailySales] = useState<DailySale[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,7 +53,6 @@ export default function DashboardPage() {
       setPkgStats(data.data.packageStats)
       setDailySiteStats(data.data.dailySiteStats || [])
       setDailyPackageStats(data.data.dailyPackageStats || [])
-      setDailySales(data.data.dailySales || [])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load')
     } finally {
@@ -122,27 +119,6 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="card card-padding overflow-x-auto">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Today&apos;s Transaction Details</h2>
-        {dailySales.length === 0 ? <p className="text-gray-400 text-sm">No confirmed sales today</p> : (
-          <table className="w-full text-sm min-w-[760px]">
-            <thead className="bg-gray-50 text-gray-600 text-left"><tr>
-              {['Reference', 'Phone number', 'Package', 'Site', 'Amount', 'Time'].map(h => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}
-            </tr></thead>
-            <tbody className="divide-y divide-gray-100">
-              {dailySales.map(s => <tr key={s.id}>
-                <td className="px-3 py-2 font-mono text-xs">{s.reference}</td>
-                <td className="px-3 py-2">{s.phoneNumber}</td>
-                <td className="px-3 py-2">{s.packageName}</td>
-                <td className="px-3 py-2">{s.siteName}</td>
-                <td className="px-3 py-2 font-semibold">{CURRENCY_FORMAT.format(s.amount)}</td>
-                <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{new Date(s.createdAt).toLocaleString('en-TZ', { dateStyle: 'short', timeStyle: 'short' })}</td>
-              </tr>)}
-            </tbody>
-          </table>
-        )}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
