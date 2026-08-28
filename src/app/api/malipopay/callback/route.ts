@@ -236,9 +236,15 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
   })
 
   try {
+    const { data: site } = await supabaseAdmin
+      .from('sites')
+      .select('omada_site_id')
+      .eq('id', transaction.site_id)
+      .maybeSingle()
     const voucher = await createOmadaVoucher(
       transaction.reference,
-      transaction.duration_seconds
+      transaction.duration_seconds,
+      site?.omada_site_id ?? undefined
     )
 
     const { data: portalSession } = await supabaseAdmin

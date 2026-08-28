@@ -77,7 +77,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       let voucherCode = transaction.voucher_code
       let voucherGroupId = transaction.omada_voucher_group_id
       if (!voucherCode) {
-        const voucher = await createOmadaVoucher(transaction.reference, transaction.duration_seconds)
+        const { data: site } = await supabaseAdmin.from('sites').select('omada_site_id').eq('id', transaction.site_id).maybeSingle()
+        const voucher = await createOmadaVoucher(transaction.reference, transaction.duration_seconds, site?.omada_site_id ?? undefined)
         voucherCode = voucher.code
         voucherGroupId = voucher.groupId
       }

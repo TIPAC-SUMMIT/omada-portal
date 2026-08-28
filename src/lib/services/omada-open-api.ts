@@ -106,10 +106,11 @@ async function getAccessToken(): Promise<string> {
 
 export async function createOmadaVoucher(
   reference: string,
-  durationSeconds: number
+  durationSeconds: number,
+  siteId = ENV.OMADA_SITE_ID
 ): Promise<GeneratedVoucher> {
-  if (!ENV.OMADA_SITE_ID) {
-    throw new Error('OMADA_SITE_ID is required to generate vouchers')
+  if (!siteId) {
+    throw new Error('An Omada site ID is required to generate vouchers')
   }
 
   const token = await getAccessToken()
@@ -117,7 +118,7 @@ export async function createOmadaVoucher(
   const groupName = `TIPAC-${reference}`.slice(0, 32)
 
   const createResponse = await fetch(
-    apiUrl(`/openapi/v1/${encodeURIComponent(ENV.OMADA_OMADAC_ID)}/sites/${encodeURIComponent(ENV.OMADA_SITE_ID)}/hotspot/voucher-groups`),
+    apiUrl(`/openapi/v1/${encodeURIComponent(ENV.OMADA_OMADAC_ID)}/sites/${encodeURIComponent(siteId)}/hotspot/voucher-groups`),
     {
       method: 'POST',
       headers: {
@@ -151,7 +152,7 @@ export async function createOmadaVoucher(
   if (!created?.id) throw new Error('Omada API did not return a voucher group ID')
 
   const detailResponse = await fetch(
-    apiUrl(`/openapi/v1/${encodeURIComponent(ENV.OMADA_OMADAC_ID)}/sites/${encodeURIComponent(ENV.OMADA_SITE_ID)}/hotspot/voucher-groups/${encodeURIComponent(created.id)}?page=1&pageSize=10`),
+    apiUrl(`/openapi/v1/${encodeURIComponent(ENV.OMADA_OMADAC_ID)}/sites/${encodeURIComponent(siteId)}/hotspot/voucher-groups/${encodeURIComponent(created.id)}?page=1&pageSize=10`),
     {
       headers: {
         Authorization: `AccessToken=${token}`,
@@ -257,7 +258,7 @@ export async function authorizeOmadaClient(input: OmadaClientAuthorization): Pro
         apMac: input.apMac,
         ssidName: input.ssidName,
         radioId: input.radioId,
-        site: ENV.OMADA_SITE_NAME || input.site,
+        site: input.site || ENV.OMADA_SITE_NAME,
         time: expiryMillis,
         authType: 4,
       }),

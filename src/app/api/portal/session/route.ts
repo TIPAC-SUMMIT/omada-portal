@@ -49,12 +49,25 @@ export async function POST(request: NextRequest) {
 
     // Match the captive-portal session to the configured Northbound site.
     let site: Site | null = null
-    const { data: sites } = await supabaseAdmin
-      .from('sites')
-      .select('*')
-      .eq('omada_site_id', process.env.OMADA_SITE_ID || '')
-      .eq('status', 'ACTIVE')
-      .single()
+    let sites: Site | null = null
+    if (params.site) {
+      const { data: omadaSite } = await supabaseAdmin
+        .from('sites')
+        .select('*')
+        .eq('name', params.site)
+        .eq('status', 'ACTIVE')
+        .maybeSingle()
+      sites = omadaSite
+    }
+    if (!sites) {
+      const { data: configuredSite } = await supabaseAdmin
+        .from('sites')
+        .select('*')
+        .eq('omada_site_id', process.env.OMADA_SITE_ID || '')
+        .eq('status', 'ACTIVE')
+        .maybeSingle()
+      sites = configuredSite
+    }
     
     if (sites) {
       site = sites

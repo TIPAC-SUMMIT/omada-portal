@@ -63,12 +63,13 @@ export async function GET(
             .eq('id', payment.id)
             .in('status', ['PENDING', 'PAYMENT_INITIATED'])
             .is('webhook_processed_at', null)
-            .select('id, reference, duration_seconds, portal_session_id')
+            .select('id, reference, duration_seconds, portal_session_id, site_id')
             .maybeSingle()
 
           if (claimed) {
             try {
-              const voucher = await createOmadaVoucher(claimed.reference, claimed.duration_seconds)
+              const { data: site } = await supabaseAdmin.from('sites').select('omada_site_id').eq('id', claimed.site_id).maybeSingle()
+              const voucher = await createOmadaVoucher(claimed.reference, claimed.duration_seconds, site?.omada_site_id ?? undefined)
               const { data: portalSession } = await supabaseAdmin
                 .from('portal_sessions')
                 .select('client_mac, ap_mac, ssid_name, site_name, radio_id')

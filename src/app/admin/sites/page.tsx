@@ -12,6 +12,7 @@ export default function SitesPage() {
   const [editing, setEditing] = useState<Site | null>(null)
   const [form, setForm] = useState({ name: '', slug: '', omada_site_id: '', location: '', description: '', status: 'ACTIVE' as Site['status'] })
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   const token = () => localStorage.getItem('admin_token')
 
@@ -34,6 +35,24 @@ export default function SitesPage() {
     } catch {
       // The local site list remains usable if Omada is temporarily unavailable.
     }
+  }
+
+  const syncSites = async () => {
+      setSyncing(true)
+      try {
+        const res = await fetch('/api/admin/omada/sites/sync', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token()}` }
+        })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.error)
+        setOmadaSites(data.data.map((site: Site) => ({ siteId: site.omada_site_id!, name: site.name })))
+        await load()
+      } catch (e) {
+        alert(e instanceof Error ? e.message : 'Synchronization failed')
+      } finally {
+        setSyncing(false)
+      }
   }
 
   useEffect(() => { load(); loadOmadaSites() }, [])
@@ -69,12 +88,18 @@ export default function SitesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Sites</h1>
-        <button onClick={openNew} className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add Site
-        </button>
+        <div className="flex gap-2">
+          <button onClick={syncSites} disabled={syncing} className="btn-secondary py-2 px-4 text-sm flex items-center gap-2">
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Syncing…' : 'Sync Omada Sites'}
+          </button>
+          <button onClick={openNew} className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Add Site
+          </button>
+        </div>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">{error}</div>}
+      <p className="text-sm text-gray-500">Sync imports every site from the connected Omada controller and keeps its Omada site ID linked. Local location, description, status, packages, and administrator assignments are preserved.</p>
 
       {loading ? (
         <div className="flex justify-center h-32"><RefreshCw className="w-6 h-6 animate-spin text-gray-400 self-center" /></div>
