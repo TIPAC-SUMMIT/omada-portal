@@ -4,7 +4,7 @@ import { Plus, Pencil, Trash2, RefreshCw, MapPin, CheckCircle, XCircle } from 'l
 import type { Site } from '@/lib/types'
 
 export default function SitesPage() {
-  const [sites, setSites] = useState<Site[]>([])
+  const [sites, setSites] = useState<Array<Site & { voucher_count: number }>>([])
   const [omadaSites, setOmadaSites] = useState<Array<{ siteId: string; name: string }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -112,19 +112,21 @@ export default function SitesPage() {
                 <th className="px-4 py-3 font-medium">Omada Site ID</th>
                 <th className="px-4 py-3 font-medium">Slug</th>
                 <th className="px-4 py-3 font-medium">Location</th>
+                <th className="px-4 py-3 font-medium">Vouchers</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {sites.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No sites yet</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No sites yet</td></tr>
               ) : sites.map(s => (
                 <tr key={s.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
                   <td className="px-4 py-3 text-gray-500 font-mono text-xs">{s.omada_site_id ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-500 font-mono text-xs">{s.slug}</td>
                   <td className="px-4 py-3 text-gray-500">{s.location ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-500">{s.voucher_count}</td>
                   <td className="px-4 py-3">{statusBadge(s.status)}</td>
                   <td className="px-4 py-3 flex gap-2">
                     <button onClick={() => openEdit(s)} className="text-brand-600 hover:text-brand-800"><Pencil className="w-4 h-4" /></button>

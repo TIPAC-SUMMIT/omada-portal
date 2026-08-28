@@ -100,11 +100,14 @@ export async function GET(request: NextRequest) {
           .select('amount_tzs').eq('site_id', s.id).eq('status', 'AUTHORIZED')
         const { count: active } = await supabaseAdmin.from('client_authorizations')
           .select('id', { count: 'exact', head: true }).eq('site_id', s.id).eq('status', 'ACTIVE').gt('expires_at', new Date().toISOString())
+        const { count: vouchers } = await supabaseAdmin.from('payment_transactions')
+          .select('id', { count: 'exact', head: true }).eq('site_id', s.id).not('voucher_code', 'is', null)
         return {
           siteId: s.id, siteName: s.name,
           revenue: txRows?.reduce((sum, r) => sum + r.amount_tzs, 0) ?? 0,
           transactions: txRows?.length ?? 0,
-          activeClients: active ?? 0
+          activeClients: active ?? 0,
+          vouchers: vouchers ?? 0
         }
       })
     )

@@ -21,7 +21,15 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query
     if (error) throw error
-    return Response.json(apiSuccess(data))
+    const sitesWithStats = await Promise.all((data ?? []).map(async site => {
+      const { count: voucherCount } = await supabaseAdmin
+        .from('payment_transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('site_id', site.id)
+        .not('voucher_code', 'is', null)
+      return { ...site, voucher_count: voucherCount ?? 0 }
+    }))
+    return Response.json(apiSuccess(sitesWithStats))
   } catch (e) {
     logError(e, 'GET /admin/sites')
     return Response.json(apiError('Failed to load sites'), { status: HTTP_STATUS.INTERNAL_SERVER_ERROR })

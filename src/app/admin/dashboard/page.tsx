@@ -10,7 +10,7 @@ interface Stats {
   revenueToday: number; paymentSuccessRate: number
   dailySalesCount: number
 }
-interface SiteStat { siteId: string; siteName: string; revenue: number; transactions: number; activeClients: number }
+interface SiteStat { siteId: string; siteName: string; revenue: number; transactions: number; activeClients: number; vouchers: number }
 interface PkgStat  { packageId: string; packageName: string; sales: number; revenue: number }
 interface DailyStat { siteId?: string; packageId?: string; siteName?: string; packageName?: string; sales: number; amount: number }
 
@@ -130,7 +130,7 @@ export default function DashboardPage() {
             <div key={s.siteId} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
               <div>
                 <p className="font-medium text-gray-900">{s.siteName}</p>
-                <p className="text-xs text-gray-500">{s.transactions} txn · {s.activeClients} active</p>
+                <p className="text-xs text-gray-500">{s.transactions} txn · {s.activeClients} active · {s.vouchers} vouchers</p>
               </div>
               <span className="font-semibold">{CURRENCY_FORMAT.format(s.revenue)}</span>
             </div>
