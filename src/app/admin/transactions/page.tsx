@@ -31,6 +31,8 @@ export default function TransactionsPage() {
   const [sites, setSites] = useState<Site[]>([])
   const [siteId, setSiteId] = useState('')
   const [status, setStatus] = useState('')
+  const [selected, setSelected] = useState<Transaction | null>(null)
+  const [retrying, setRetrying] = useState(false)
   const LIMIT = 20
 
   const load = async (p = 1) => {
@@ -56,6 +58,29 @@ export default function TransactionsPage() {
   }, [])
 
   const fmt = (d: string) => new Date(d).toLocaleString('en-TZ', { dateStyle: 'short', timeStyle: 'short' })
+
+  const openDetails = async (row: Transaction) => {
+    const token = localStorage.getItem('admin_token')
+    const res = await fetch(`/api/admin/transactions/${row.id}`)
+    const data = await res.json()
+    if (data.success) setSelected(data.data)
+  }
+
+  const retryAuthorization = async () => {
+    if (!selected) return
+    setRetrying(true)
+    try {
+      const res = await fetch(`/api/admin/transactions/${selected.id}`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error)
+      setSelected(null)
+      load(page)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Retry failed')
+    } finally { setRetrying(false) }
+  }
 
   return (
     <div className="space-y-6">
@@ -101,7 +126,7 @@ export default function TransactionsPage() {
             ) : rows.length === 0 ? (
               <tr><td colSpan={10} className="py-8 text-center text-gray-400">No transactions found</td></tr>
             ) : rows.map(r => (
-              <tr key={r.id} className="hover:bg-gray-50">
+              <tr key={r.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openDetails(r)}>
                 <td className="px-4 py-3 font-mono text-xs text-gray-700">{r.reference}</td>
                 <td className="px-4 py-3 text-gray-500">{r.sites?.name ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-500">{r.packages?.name ?? '—'}</td>
@@ -122,6 +147,31 @@ export default function TransactionsPage() {
           </tbody>
         </table>
       </div>
+
+      {selected && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
+          <div className="bg-white rounded-xl w-full max-w-xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start">
+              <h2 className="text-lg font-bold">Transaction details</h2>
+              <button onClick={() => setSelected(null)} className="text-gray-500">Close</button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><span className="text-gray-500">Reference</span><p className="font-mono">{selected.reference}</p></div>
+              <div><span className="text-gray-500">Status</span><p>{selected.status}</p></div>
+              <div><span className="text-gray-500">Amount</span><p>{CURRENCY_FORMAT.format(selected.amount_tzs)}</p></div>
+              <div><span className="text-gray-500">Package</span><p>{selected.packages?.name ?? '—'}</p></div>
+              <div><span className="text-gray-500">Provider reference</span><p className="font-mono text-xs">{selected.malipopay_transaction_id ?? '—'}</p></div>
+              <div><span className="text-gray-500">Voucher</span><p className="font-mono">{selected.voucher_code ?? '—'}</p></div>
+              <div className="col-span-2"><span className="text-gray-500">Error</span><p className="text-red-600">{selected.error_message ?? '—'}</p></div>
+            </div>
+            {['PAYMENT_SUCCESS', 'OMADA_AUTHORIZING', 'AUTHORIZATION_FAILED'].includes(selected.status) && (
+              <button onClick={retryAuthorization} disabled={retrying} className="btn-primary w-full">
+                {retrying ? 'Authorizing…' : 'Retry Omada authorization'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between text-sm text-gray-500">
         <span>{total} total</span>
