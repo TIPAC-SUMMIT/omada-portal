@@ -44,8 +44,8 @@ export default function PortalPage() {
 
   const handleVoucherLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!voucher.trim()) { setError('Please enter your voucher code'); return }
-    if (!omadaSubmitUrl) { setError('Wi-Fi controller login URL is missing. Please reconnect to Wi-Fi and try again.'); return }
+    if (!voucher.trim()) { setError('Weka namba ya vocha yako'); return }
+    if (!omadaSubmitUrl) { setError('Anwani ya kuingia Wi-Fi haipo. Zima kisha washa Wi-Fi ujaribu tena.'); return }
     setLoading(true); setError('')
 
     // Submit to Omada controller directly (standard portal submit)
@@ -71,8 +71,8 @@ export default function PortalPage() {
 
   const handleUserLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!username.trim() || !password) { setError('Enter username and password'); return }
-    if (!omadaSubmitUrl) { setError('Wi-Fi controller login URL is missing. Please reconnect to Wi-Fi and try again.'); return }
+    if (!username.trim() || !password) { setError('Weka jina la mtumiaji na neno la siri'); return }
+    if (!omadaSubmitUrl) { setError('Anwani ya kuingia Wi-Fi haipo. Zima kisha washa Wi-Fi ujaribu tena.'); return }
     setLoading(true); setError('')
 
     const form = document.createElement('form')
@@ -122,7 +122,7 @@ export default function PortalPage() {
           <Wifi className="w-10 h-10 text-white" />
         </div>
         <h1 className="text-3xl font-bold text-white tracking-tight">TIPAC SUMMIT</h1>
-        <p className="text-brand-200 text-sm mt-1">High-Speed Wi-Fi Access</p>
+        <p className="text-brand-200 text-sm mt-1">Internet ya Wi-Fi yenye kasi</p>
         {ssidName && <p className="text-brand-400 text-xs mt-1">📶 {ssidName}</p>}
       </div>
 
@@ -133,13 +133,13 @@ export default function PortalPage() {
             text-gray-900 font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95
             flex items-center justify-center gap-3 text-lg">
           <ShoppingCart className="w-6 h-6" />
-          Buy Voucher
+          Nunua vocha
         </button>
         <div className="grid grid-cols-3 gap-2 mt-2">
           {[{price:'200 TZS',dur:'7 min'},{price:'500 TZS',dur:'6 hrs'},{price:'1,000 TZS',dur:'24 hrs'}].map(p => (
             <div key={p.price} className="bg-white/5 rounded-xl p-2 text-center">
               <p className="text-white text-xs font-bold">{p.price}</p>
-              <p className="text-brand-300 text-xs">{p.dur}</p>
+              <p className="text-brand-300 text-xs">{p.dur.replace('min', 'dak').replace('hrs', 'saa')}</p>
             </div>
           ))}
         </div>
@@ -152,12 +152,12 @@ export default function PortalPage() {
           <button onClick={() => { setTab('voucher'); setError('') }}
             className={`flex-1 py-4 text-sm font-semibold flex items-center justify-center gap-2 transition-colors
               ${tab === 'voucher' ? 'text-brand-600 border-b-2 border-brand-600' : 'text-gray-400 hover:text-gray-600'}`}>
-            <Ticket className="w-4 h-4" /> Voucher
+            <Ticket className="w-4 h-4" /> Vocha
           </button>
           <button onClick={() => { setTab('user'); setError('') }}
             className={`flex-1 py-4 text-sm font-semibold flex items-center justify-center gap-2 transition-colors
               ${tab === 'user' ? 'text-brand-600 border-b-2 border-brand-600' : 'text-gray-400 hover:text-gray-600'}`}>
-            <User className="w-4 h-4" /> Username
+            <User className="w-4 h-4" /> Jina la mtumiaji
           </button>
         </div>
 
@@ -171,14 +171,14 @@ export default function PortalPage() {
           {tab === 'voucher' ? (
             <form onSubmit={handleVoucherLogin} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Voucher Code</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Namba ya vocha</label>
                 <div className="relative">
                   <Ticket className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                   <input
                     type="text"
                     value={voucher}
                     onChange={e => setVoucher(e.target.value.toUpperCase())}
-                    placeholder="Enter your code"
+                    placeholder="Weka namba ya vocha"
                     className="input-field pl-10 font-mono tracking-wider text-lg uppercase"
                     autoComplete="off"
                     autoFocus
@@ -188,25 +188,25 @@ export default function PortalPage() {
               </div>
               <button type="submit" disabled={loading || !voucher.trim()}
                 className="btn-primary w-full py-4 text-base">
-                {loading ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-5 h-5 animate-spin" /> Connecting…</span> : 'Connect'}
+                {loading ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-5 h-5 animate-spin" /> Inaunganisha…</span> : 'Unganisha'}
               </button>
             </form>
           ) : (
             <form onSubmit={handleUserLogin} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Jina la mtumiaji</label>
                 <div className="relative">
                   <User className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                   <input type="text" value={username} onChange={e => setUsername(e.target.value)}
-                    placeholder="Username" className="input-field pl-10" disabled={loading} />
+                    placeholder="Jina la mtumiaji" className="input-field pl-10" disabled={loading} />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Neno la siri</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                   <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                    placeholder="Password" className="input-field pl-10 pr-10" disabled={loading} />
+                    placeholder="Neno la siri" className="input-field pl-10 pr-10" disabled={loading} />
                   <button type="button" onClick={() => setShowPw(!showPw)}
                     className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600">
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -215,18 +215,18 @@ export default function PortalPage() {
               </div>
               <button type="submit" disabled={loading || !username || !password}
                 className="btn-primary w-full py-4 text-base">
-                {loading ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-5 h-5 animate-spin" /> Connecting…</span> : 'Log In'}
+                {loading ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-5 h-5 animate-spin" /> Inaingia…</span> : 'Ingia'}
               </button>
             </form>
           )}
         </div>
 
         <div className="px-6 pb-5 text-center">
-          <p className="text-gray-400 text-xs">Don't have a voucher? <button onClick={handleBuyVoucher} className="text-brand-600 font-medium hover:underline">Buy one here</button></p>
+          <p className="text-gray-400 text-xs">Huna vocha? <button onClick={handleBuyVoucher} className="text-brand-600 font-medium hover:underline">Nunua hapa</button></p>
         </div>
       </div>
 
-      <p className="text-brand-400 text-xs mt-6">TIPAC SUMMIT Wi-Fi · Powered by MalipoPay</p>
+      <p className="text-brand-400 text-xs mt-6">TIPAC SUMMIT Wi-Fi · MalipoPay</p>
     </div>
   )
 }

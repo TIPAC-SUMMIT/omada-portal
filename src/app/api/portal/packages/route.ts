@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     logError(error, 'Portal packages')
-    return Response.json(apiError('Failed to load packages'), { 
+    return Response.json(apiError('Imeshindikana kupakia vifurushi.'), {
       status: HTTP_STATUS.INTERNAL_SERVER_ERROR 
     })
   }

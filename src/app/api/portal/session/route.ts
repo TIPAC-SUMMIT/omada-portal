@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return Response.json(apiError('Failed to create portal session'), { 
+    return Response.json(apiError('Imeshindikana kuanzisha ukurasa wa Wi-Fi.'), {
       status: HTTP_STATUS.INTERNAL_SERVER_ERROR 
     })
   }

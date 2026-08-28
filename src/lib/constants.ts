@@ -124,6 +124,22 @@ export const formatDuration = (seconds: number): string => {
   return `${minutes} minute${minutes > 1 ? 's' : ''}`
 }
 
+export const formatDurationSwahili = (seconds: number): string => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24)
+    return `siku ${days}`
+  }
+
+  if (hours >= 1) {
+    return `saa ${hours}`
+  }
+
+  return `dakika ${minutes}`
+}
+
 // ============================================================================
 // Validation
 // ============================================================================

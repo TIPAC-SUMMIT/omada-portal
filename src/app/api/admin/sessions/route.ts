@@ -11,7 +11,9 @@ export async function GET(request: NextRequest) {
 
     let query = supabaseAdmin
       .from('client_authorizations')
-      .select('id,client_mac,ap_mac,ssid_name,status,duration_seconds,authorized_at,expires_at,sites!client_authorizations_site_id_fkey(name),payment_transactions!client_authorizations_transaction_id_fkey(packages!payment_transactions_package_id_fkey(name))')
+      .select('id,transaction_id,client_mac,ap_mac,ssid_name,status,duration_seconds,authorized_at,expires_at,sites!client_authorizations_site_id_fkey(name),payment_transactions!client_authorizations_transaction_id_fkey(reference,phone_number,amount_tzs,voucher_code,packages!payment_transactions_package_id_fkey(name))')
+      .eq('status', 'ACTIVE')
+      .gt('expires_at', new Date().toISOString())
       .order('authorized_at', { ascending: false })
       .limit(200)
 
@@ -40,6 +42,10 @@ export async function GET(request: NextRequest) {
     const rows = (data ?? []).map((r: any) => ({
       ...r,
       packages: r.payment_transactions?.packages ?? null,
+      reference: r.payment_transactions?.reference ?? null,
+      phone_number: r.payment_transactions?.phone_number ?? null,
+      amount_tzs: r.payment_transactions?.amount_tzs ?? null,
+      voucher_code: r.payment_transactions?.voucher_code ?? null,
       payment_transactions: undefined
     }))
 

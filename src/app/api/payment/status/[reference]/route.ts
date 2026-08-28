@@ -122,12 +122,12 @@ export async function GET(
     let portalUrl: string | undefined
 
     switch (transaction.status) {
-      case 'PENDING':            message = 'Sending payment prompt to your phone…'; break
-      case 'PAYMENT_INITIATED':  message = 'Please enter your PIN on your phone.'; break
+      case 'PENDING':            message = 'Inatuma ombi la malipo kwenye simu yako…'; break
+      case 'PAYMENT_INITIATED':  message = 'Weka PIN yako kwenye simu.'; break
       case 'PAYMENT_SUCCESS':
-      case 'OMADA_AUTHORIZING':  message = voucherCode ? 'Payment confirmed! Your voucher is ready.' : 'Payment confirmed. Activating access…'; break
+      case 'OMADA_AUTHORIZING':  message = voucherCode ? 'Malipo yamethibitishwa! Vocha yako iko tayari.' : 'Malipo yamethibitishwa. Inaunganisha internet…'; break
       case 'AUTHORIZED':
-        message = voucherCode ? 'Payment successful! Copy your voucher code.' : 'Internet access activated!'
+        message = voucherCode ? 'Malipo yamefanikiwa! Nakili namba yako ya vocha.' : 'Internet imeunganishwa!'
         if (transaction.portal_session_id) {
           const { data: ps } = await supabaseAdmin
             .from('portal_sessions')
@@ -150,12 +150,12 @@ export async function GET(
           portalUrl = `/portal?${params.toString()}`
         }
         break
-      case 'PAYMENT_FAILED':     message = 'Payment failed. Please try again.'; break
-      case 'PAYMENT_CANCELLED':  message = 'Payment was cancelled.'; break
-      case 'PAYMENT_TIMEOUT':    message = 'Payment timed out. Please try again.'; break
-      case 'AUTHORIZATION_FAILED': message = 'Payment received. Contact support if issue persists.'; break
-      case 'EXPIRED':            message = 'Transaction expired. Please start over.'; break
-      default:                   message = 'Processing…'
+      case 'PAYMENT_FAILED':     message = 'Malipo yameshindikana. Tafadhali jaribu tena.'; break
+      case 'PAYMENT_CANCELLED':  message = 'Malipo yameghairiwa.'; break
+      case 'PAYMENT_TIMEOUT':    message = 'Muda wa malipo umeisha. Tafadhali jaribu tena.'; break
+      case 'AUTHORIZATION_FAILED': message = 'Malipo yamepokelewa. Piga simu ya msaada kama tatizo litaendelea.'; break
+      case 'EXPIRED':            message = 'Muda wa muamala umeisha. Tafadhali anza upya.'; break
+      default:                   message = 'Inashughulikia…'
     }
 
     return Response.json(apiSuccess({

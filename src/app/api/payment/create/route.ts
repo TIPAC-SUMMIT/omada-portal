@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!session.selected_package_id) {
-      return Response.json(apiError('No package selected. Please select a package first.', 'PACKAGE_NOT_SELECTED'), {
+      return Response.json(apiError('Hakuna kifurushi ulichochagua. Tafadhali chagua kifurushi kwanza.', 'PACKAGE_NOT_SELECTED'), {
         status: HTTP_STATUS.BAD_REQUEST
       })
     }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!validateTanzanianPhone(normalizedPhone)) {
-      return Response.json(apiError('Please enter a valid Tanzanian mobile number (e.g. 0687 123 456)', 'INVALID_PHONE_NUMBER'), {
+      return Response.json(apiError('Weka namba sahihi ya simu ya Tanzania (mfano 0687 123 456)', 'INVALID_PHONE_NUMBER'), {
         status: HTTP_STATUS.BAD_REQUEST
       })
     }
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       const isStale = ageMinutes > 20
 
       if (!isExpired && !isStale) {
-        return Response.json(apiError('A payment is already in progress. Please wait or try again in a few minutes.', 'PAYMENT_ALREADY_INITIATED'), {
+        return Response.json(apiError('Kuna malipo yanayoendelea. Subiri kidogo ujaribu tena.', 'PAYMENT_ALREADY_INITIATED'), {
           status: HTTP_STATUS.CONFLICT
         })
       }
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
           .update({ status: 'PAYMENT_FAILED', error_message: collectionResult.error })
           .eq('id', transaction.id)
 
-        return Response.json(apiError(collectionResult.error || 'Failed to initiate payment. Please try again.', 'MALIPOPAY_ERROR'), {
+        return Response.json(apiError(collectionResult.error || 'Imeshindikana kuanzisha malipo. Tafadhali jaribu tena.', 'MALIPOPAY_ERROR'), {
           status: HTTP_STATUS.SERVICE_UNAVAILABLE
         })
       }
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', transaction.id)
 
-      return Response.json(apiError('Payment service temporarily unavailable. Please try again.', 'MALIPOPAY_ERROR'), {
+      return Response.json(apiError('Huduma ya malipo haipatikani kwa sasa. Tafadhali jaribu tena.', 'MALIPOPAY_ERROR'), {
         status: HTTP_STATUS.SERVICE_UNAVAILABLE
       })
     }

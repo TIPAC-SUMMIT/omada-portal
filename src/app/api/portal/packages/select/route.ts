@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return Response.json(apiError('Failed to select package'), { 
+    return Response.json(apiError('Imeshindikana kuchagua kifurushi.'), {
       status: HTTP_STATUS.INTERNAL_SERVER_ERROR 
     })
   }

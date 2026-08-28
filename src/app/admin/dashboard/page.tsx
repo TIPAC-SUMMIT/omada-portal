@@ -8,9 +8,12 @@ interface Stats {
   pendingPayments: number; authorizationFailures: number
   activeClients: number; expiredSessions: number; todayTransactions: number
   revenueToday: number; paymentSuccessRate: number
+  dailySalesCount: number
 }
 interface SiteStat { siteId: string; siteName: string; revenue: number; transactions: number; activeClients: number }
 interface PkgStat  { packageId: string; packageName: string; sales: number; revenue: number }
+interface DailyStat { siteId?: string; packageId?: string; siteName?: string; packageName?: string; sales: number; amount: number }
+interface DailySale { id: string; reference: string; phoneNumber: string; amount: number; createdAt: string; siteName: string; packageName: string }
 
 function StatCard({ icon: Icon, label, value, color = 'blue' }: {
   icon: React.ElementType; label: string; value: string | number; color?: string
@@ -34,6 +37,9 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [siteStats, setSiteStats] = useState<SiteStat[]>([])
   const [pkgStats, setPkgStats] = useState<PkgStat[]>([])
+  const [dailySiteStats, setDailySiteStats] = useState<DailyStat[]>([])
+  const [dailyPackageStats, setDailyPackageStats] = useState<DailyStat[]>([])
+  const [dailySales, setDailySales] = useState<DailySale[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,6 +53,9 @@ export default function DashboardPage() {
       setStats(data.data.stats)
       setSiteStats(data.data.siteStats)
       setPkgStats(data.data.packageStats)
+      setDailySiteStats(data.data.dailySiteStats || [])
+      setDailyPackageStats(data.data.dailyPackageStats || [])
+      setDailySales(data.data.dailySales || [])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load')
     } finally {
@@ -84,10 +93,57 @@ export default function DashboardPage() {
           <StatCard icon={Wifi}        label="Active Clients"       value={stats.activeClients}                          color="blue"   />
           <StatCard icon={CreditCard}  label="Today's Transactions" value={stats.todayTransactions}                      color="purple" />
           <StatCard icon={TrendingUp}  label="Today's Revenue"      value={CURRENCY_FORMAT.format(stats.revenueToday)}  color="purple" />
+          <StatCard icon={CreditCard}  label="Today's Sales"         value={stats.dailySalesCount}                       color="blue" />
           <StatCard icon={Clock}       label="Expired Sessions"     value={stats.expiredSessions}                        color="yellow" />
           <StatCard icon={CheckCircle} label="Success Rate"         value={`${stats.paymentSuccessRate}%`}               color="green"  />
         </div>
       )}
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="card card-padding">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-brand-600" /> Today by Site
+          </h2>
+          {dailySiteStats.length === 0 ? <p className="text-gray-400 text-sm">No sales today</p> : dailySiteStats.map(s => (
+            <div key={s.siteId} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
+              <div><p className="font-medium text-gray-900">{s.siteName}</p><p className="text-xs text-gray-500">{s.sales} sales</p></div>
+              <span className="font-semibold">{CURRENCY_FORMAT.format(s.amount)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="card card-padding">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Package className="w-5 h-5 text-brand-600" /> Today by Package
+          </h2>
+          {dailyPackageStats.length === 0 ? <p className="text-gray-400 text-sm">No sales today</p> : dailyPackageStats.map(p => (
+            <div key={p.packageId} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
+              <div><p className="font-medium text-gray-900">{p.packageName}</p><p className="text-xs text-gray-500">{p.sales} sold</p></div>
+              <span className="font-semibold">{CURRENCY_FORMAT.format(p.amount)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card card-padding overflow-x-auto">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Today&apos;s Transaction Details</h2>
+        {dailySales.length === 0 ? <p className="text-gray-400 text-sm">No confirmed sales today</p> : (
+          <table className="w-full text-sm min-w-[760px]">
+            <thead className="bg-gray-50 text-gray-600 text-left"><tr>
+              {['Reference', 'Phone number', 'Package', 'Site', 'Amount', 'Time'].map(h => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}
+            </tr></thead>
+            <tbody className="divide-y divide-gray-100">
+              {dailySales.map(s => <tr key={s.id}>
+                <td className="px-3 py-2 font-mono text-xs">{s.reference}</td>
+                <td className="px-3 py-2">{s.phoneNumber}</td>
+                <td className="px-3 py-2">{s.packageName}</td>
+                <td className="px-3 py-2">{s.siteName}</td>
+                <td className="px-3 py-2 font-semibold">{CURRENCY_FORMAT.format(s.amount)}</td>
+                <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{new Date(s.createdAt).toLocaleString('en-TZ', { dateStyle: 'short', timeStyle: 'short' })}</td>
+              </tr>)}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="card card-padding">

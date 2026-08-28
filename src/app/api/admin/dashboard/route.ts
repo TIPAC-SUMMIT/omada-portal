@@ -63,6 +63,34 @@ export async function GET(request: NextRequest) {
     const todayTransactions = todayTxRows?.length ?? 0
     const revenueToday = todayTxRows?.filter(r => r.status === 'AUTHORIZED').reduce((s, r) => s + r.amount_tzs, 0) ?? 0
 
+    // Daily sales detail is limited to confirmed transactions created today.
+    let dailySalesQuery = supabaseAdmin
+      .from('payment_transactions')
+      .select('id,reference,phone_number,amount_tzs,created_at,site_id,package_id,sites!payment_transactions_site_id_fkey(name),packages!payment_transactions_package_id_fkey(name)')
+      .eq('status', 'AUTHORIZED')
+      .gte('created_at', todayISO)
+      .order('created_at', { ascending: false })
+      .limit(500)
+    if (siteFilter) dailySalesQuery = dailySalesQuery.in('site_id', siteFilter)
+    const { data: dailySales } = await dailySalesQuery
+
+    const dailySiteMap = new Map<string, { siteId: string; siteName: string; sales: number; amount: number }>()
+    const dailyPackageMap = new Map<string, { packageId: string; packageName: string; sales: number; amount: number }>()
+    for (const sale of dailySales ?? []) {
+      const site = Array.isArray(sale.sites) ? sale.sites[0] : sale.sites
+      const pkg = Array.isArray(sale.packages) ? sale.packages[0] : sale.packages
+      const siteKey = sale.site_id ?? 'unknown-site'
+      const packageKey = sale.package_id ?? 'unknown-package'
+      const siteStat = dailySiteMap.get(siteKey) ?? { siteId: siteKey, siteName: site?.name ?? 'Unknown site', sales: 0, amount: 0 }
+      siteStat.sales += 1
+      siteStat.amount += sale.amount_tzs
+      dailySiteMap.set(siteKey, siteStat)
+      const packageStat = dailyPackageMap.get(packageKey) ?? { packageId: packageKey, packageName: pkg?.name ?? 'Unknown package', sales: 0, amount: 0 }
+      packageStat.sales += 1
+      packageStat.amount += sale.amount_tzs
+      dailyPackageMap.set(packageKey, packageStat)
+    }
+
     const total = (successfulPayments ?? 0) + (failedPayments ?? 0)
     const paymentSuccessRate = total > 0 ? Math.round(((successfulPayments ?? 0) / total) * 100) : 0
 
@@ -104,8 +132,20 @@ export async function GET(request: NextRequest) {
         expiredSessions: expiredSessions ?? 0,
         todayTransactions,
         revenueToday,
-        paymentSuccessRate
+        paymentSuccessRate,
+        dailySalesCount: dailySales?.length ?? 0
       },
+      dailySiteStats: [...dailySiteMap.values()].sort((a, b) => b.amount - a.amount),
+      dailyPackageStats: [...dailyPackageMap.values()].sort((a, b) => b.sales - a.sales),
+      dailySales: (dailySales ?? []).map((sale: any) => ({
+        id: sale.id,
+        reference: sale.reference,
+        phoneNumber: sale.phone_number,
+        amount: sale.amount_tzs,
+        createdAt: sale.created_at,
+        siteName: (Array.isArray(sale.sites) ? sale.sites[0] : sale.sites)?.name ?? 'Unknown site',
+        packageName: (Array.isArray(sale.packages) ? sale.packages[0] : sale.packages)?.name ?? 'Unknown package'
+      })),
       siteStats: siteStats.sort((a, b) => b.revenue - a.revenue),
       packageStats: packageStats.sort((a, b) => b.sales - a.sales)
     }))

@@ -10,7 +10,7 @@ export default function GuestLoginPage() {
         <div className="text-center px-6">
           <div className="w-12 h-12 rounded-full border-4 border-white/30 border-t-white animate-spin mx-auto mb-4" />
           <p className="text-white font-semibold text-lg">TIPAC SUMMIT</p>
-          <p className="text-brand-200 text-sm mt-1">Loading portal…</p>
+          <p className="text-brand-200 text-sm mt-1">Inapakia ukurasa…</p>
         </div>
       </div>
     }>

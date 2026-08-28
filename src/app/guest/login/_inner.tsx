@@ -29,7 +29,7 @@ export default function GuestLoginInner() {
       }
 
       if (!params.clientMac || !params.apMac || !params.ssidName) {
-        setError('Invalid captive portal parameters. Please reconnect to Wi-Fi and try again.')
+        setError('Taarifa za kuunganisha Wi-Fi si sahihi. Zima kisha washa Wi-Fi ujaribu tena.')
         setLoading(false)
         return
       }
@@ -42,7 +42,7 @@ export default function GuestLoginInner() {
 
       if (!response.ok) {
         const err = await response.json()
-        throw new Error(err.error || 'Failed to create portal session')
+        throw new Error(err.error || 'Imeshindikana kuanzisha ukurasa wa Wi-Fi.')
       }
 
       const data = await response.json()
@@ -51,7 +51,7 @@ export default function GuestLoginInner() {
       // when the component is still in a loading state
       window.location.href = `/guest/packages?token=${token}`
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to initialize portal session')
+      setError(e instanceof Error ? e.message : 'Imeshindikana kuanzisha ukurasa wa Wi-Fi.')
       setLoading(false)
     }
   }
@@ -61,10 +61,10 @@ export default function GuestLoginInner() {
       <div className="text-center px-6">
         <Wifi className="w-16 h-16 text-white mx-auto mb-4 animate-pulse" />
         <h1 className="text-2xl font-bold text-white mb-1">TIPAC SUMMIT</h1>
-        <p className="text-brand-200 text-sm mb-8">Wi-Fi Access Portal</p>
+        <p className="text-brand-200 text-sm mb-8">Ukurasa wa kuunganisha Wi-Fi</p>
         <div className="bg-white/10 rounded-xl p-6 max-w-sm mx-auto">
           <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-3" />
-          <p className="text-white">Setting up your session…</p>
+          <p className="text-white">Inaandaa kuunganisha kwako…</p>
         </div>
       </div>
     </div>
@@ -74,9 +74,9 @@ export default function GuestLoginInner() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-brand-700 to-brand-900 px-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center">
         <AlertCircle className="w-14 h-14 text-red-500 mx-auto mb-4" />
-        <h1 className="text-xl font-bold text-gray-900 mb-3">Connection Error</h1>
+        <h1 className="text-xl font-bold text-gray-900 mb-3">Tatizo la kuunganisha</h1>
         <p className="text-gray-600 mb-6">{error}</p>
-        <button onClick={() => window.location.reload()} className="btn-primary w-full">Try Again</button>
+        <button onClick={() => window.location.reload()} className="btn-primary w-full">Jaribu tena</button>
       </div>
     </div>
   )

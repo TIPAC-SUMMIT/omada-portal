@@ -7,6 +7,7 @@ interface Session {
   id: string; record_type: 'AUTHORIZATION' | 'PAYMENT'; client_mac: string; ap_mac: string; ssid_name: string
   status: AuthorizationStatus | string; duration_seconds?: number; amount_tzs?: number
   authorized_at?: string; expires_at?: string; created_at: string; reference?: string
+  phone_number?: string | null; voucher_code?: string | null
   error_code?: string | null; error_message?: string | null
   sites: { name: string } | null
   packages: { name: string } | null
@@ -50,19 +51,21 @@ export default function SessionsPage() {
         <table className="w-full text-sm min-w-[700px]">
           <thead className="bg-gray-50 text-gray-600 text-left">
             <tr>
-              {['Type','Client MAC','Site','AP','Package','Start Time','Expires','Status','Issue'].map(h => (
+              {['Type','Voucher','Phone','Client MAC','Site','Package','Start Time','Expires','Status','Issue'].map(h => (
                 <th key={h} className="px-4 py-3 font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
-              <tr><td colSpan={9} className="py-8 text-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400 mx-auto" /></td></tr>
+              <tr><td colSpan={11} className="py-8 text-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400 mx-auto" /></td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={9} className="py-8 text-center text-gray-400">No active sessions or pending operations</td></tr>
+              <tr><td colSpan={11} className="py-8 text-center text-gray-400">No active sessions or pending operations</td></tr>
             ) : rows.map(r => (
               <tr key={r.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-xs">{r.record_type === 'PAYMENT' ? 'PAYMENT' : 'SESSION'}</td>
+                <td className="px-4 py-3 font-mono text-xs text-green-700">{r.voucher_code ?? '—'}</td>
+                <td className="px-4 py-3 text-xs text-gray-700">{r.phone_number ?? '—'}</td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-700">{r.client_mac}</td>
                 <td className="px-4 py-3 text-gray-500">{r.sites?.name ?? '—'}</td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">{r.ap_mac}</td>
