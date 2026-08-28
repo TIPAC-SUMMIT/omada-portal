@@ -34,6 +34,16 @@ export interface IMalipoPayService {
     error?: string
   }>
 
+  getPaymentStatus(reference: string): Promise<{
+    success: boolean
+    reference?: string
+    customerReference?: string
+    status?: string
+    amount?: number
+    paidAmount?: number
+    error?: string
+  }>
+
   verifyWebhook(rawBody: string, signatureHeader?: string): boolean
 
   parseWebhook(payload: any): {
@@ -76,6 +86,7 @@ class RealMalipoPayService implements IMalipoPayService {
       if (!this.apiToken) {
         throw new Error('MALIPOPAY_API_TOKEN environment variable is required')
       }
+
       const phoneNumber = normalizePhoneNumber(request.phoneNumber)
 
       // MalipoPay payload — we send our WIFI-... ref as the `reference` field.
@@ -159,6 +170,41 @@ class RealMalipoPayService implements IMalipoPayService {
         ? 'Payment service timed out. Please try again.'
         : 'Payment service unavailable. Please try again.'
       return { success: false, reference: request.reference, error: msg }
+    }
+  }
+
+  async getPaymentStatus(reference: string): Promise<{
+    success: boolean
+    reference?: string
+    customerReference?: string
+    status?: string
+    amount?: number
+    paidAmount?: number
+    error?: string
+  }> {
+    try {
+      if (!this.apiToken) throw new Error('MALIPOPAY_API_TOKEN environment variable is required')
+      const response = await fetch(
+        `${this.baseUrl}/payment/reference/${encodeURIComponent(reference)}`,
+        { headers: { apiToken: this.apiToken }, signal: AbortSignal.timeout(10_000) }
+      )
+      const result = await response.json()
+      if (!response.ok || !result.success || !result.data) {
+        return { success: false, error: result.message || `Payment status error (${response.status})` }
+      }
+
+      const data = result.data
+      return {
+        success: true,
+        reference: data.reference,
+        customerReference: data.customerReference,
+        status: typeof data.status === 'string' ? data.status.trim().toLowerCase() : undefined,
+        amount: Number(data.amount),
+        paidAmount: Number(data.paidAmount)
+      }
+    } catch (error) {
+      logError(error, 'MalipoPay getPaymentStatus')
+      return { success: false, error: 'Unable to verify payment status' }
     }
   }
 
@@ -281,6 +327,19 @@ class MockMalipoPayService implements IMalipoPayService {
     setTimeout(() => this.simulateWebhook(request.reference, malipoReference, request.amount, request.phoneNumber), ms)
 
     return { success: true, malipoReference, transactionId, reference: request.reference }
+  }
+
+  async getPaymentStatus(reference: string): Promise<any> {
+    const payment = this.store.get(reference)
+    if (!payment) return { success: false, error: 'Payment not found' }
+    return {
+      success: true,
+      reference: payment.malipoReference,
+      customerReference: reference,
+      status: payment.status?.toLowerCase() || 'processing',
+      amount: payment.amount,
+      paidAmount: payment.status === 'Success' ? payment.amount : 0
+    }
   }
 
   verifyWebhook(): boolean { return true }

@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { malipoPayService } from '@/lib/services/malipopay'
+import { createOmadaVoucher } from '@/lib/services/omada-open-api'
 import { apiSuccess, apiError, logError } from '@/lib/utils'
 import { HTTP_STATUS } from '@/lib/constants'
 
@@ -14,7 +16,7 @@ export async function GET(
       return Response.json(apiError('Invalid transaction reference'), { status: HTTP_STATUS.BAD_REQUEST })
     }
 
-    const { data: transaction, error } = await supabaseAdmin
+    let { data: transaction, error } = await supabaseAdmin
       .from('payment_transactions')
       .select('id, reference, status, error_message, voucher_code, portal_session_id')
       .eq('reference', reference)
@@ -22,6 +24,78 @@ export async function GET(
 
     if (error || !transaction) {
       return Response.json(apiError('Transaction not found', 'TRANSACTION_NOT_FOUND'), { status: HTTP_STATUS.NOT_FOUND })
+    }
+
+    if (['PENDING', 'PAYMENT_INITIATED'].includes(transaction.status)) {
+      const { data: payment } = await supabaseAdmin
+        .from('payment_transactions')
+        .select('id, reference, status, amount_tzs, duration_seconds, portal_session_id, malipopay_transaction_id')
+        .eq('id', transaction.id)
+        .single()
+
+      if (payment?.malipopay_transaction_id) {
+        const provider = await malipoPayService.getPaymentStatus(payment.malipopay_transaction_id)
+        console.log(JSON.stringify({
+          level: 'info',
+          event: 'PAYMENT_STATUS_RECONCILIATION',
+          reference: payment.reference,
+          providerReference: payment.malipopay_transaction_id,
+          providerSuccess: provider.success,
+          providerStatus: provider.status,
+          providerAmount: provider.amount,
+          providerPaidAmount: provider.paidAmount
+        }))
+        const confirmed = provider.success &&
+          ['success', 'successful', 'paid', 'completed'].includes(provider.status || '') &&
+          provider.paidAmount === payment.amount_tzs &&
+          provider.amount === payment.amount_tzs &&
+          (!provider.customerReference || provider.customerReference === payment.reference)
+
+        if (confirmed) {
+          const { data: claimed } = await supabaseAdmin
+            .from('payment_transactions')
+            .update({
+              status: 'PAYMENT_SUCCESS',
+              webhook_processed_at: new Date().toISOString(),
+              malipopay_transaction_id: provider.reference,
+              webhook_payload: { source: 'provider_reconciliation', reference: provider.reference, status: provider.status, amount: provider.amount, paidAmount: provider.paidAmount }
+            })
+            .eq('id', payment.id)
+            .in('status', ['PENDING', 'PAYMENT_INITIATED'])
+            .is('webhook_processed_at', null)
+            .select('id, reference, duration_seconds, portal_session_id')
+            .maybeSingle()
+
+          if (claimed) {
+            try {
+              const voucher = await createOmadaVoucher(claimed.reference, claimed.duration_seconds)
+              await supabaseAdmin.from('payment_transactions').update({
+                status: 'AUTHORIZED',
+                voucher_code: voucher.code,
+                omada_voucher_group_id: voucher.groupId,
+                authorized_at: new Date().toISOString(),
+                expires_at: new Date(Date.now() + claimed.duration_seconds * 1000).toISOString(),
+                error_code: null,
+                error_message: null
+              }).eq('id', claimed.id)
+              await supabaseAdmin.from('portal_sessions').update({ status: 'AUTHORIZED' }).eq('id', claimed.portal_session_id)
+            } catch (authorizationError) {
+              await supabaseAdmin.from('payment_transactions').update({
+                status: 'AUTHORIZATION_FAILED',
+                error_code: 'OMADA_ERROR',
+                error_message: authorizationError instanceof Error ? authorizationError.message : 'Authorization failed'
+              }).eq('id', claimed.id)
+            }
+
+            const refreshed = await supabaseAdmin
+              .from('payment_transactions')
+              .select('id, reference, status, error_message, voucher_code, portal_session_id')
+              .eq('id', transaction.id)
+              .single()
+            transaction = refreshed.data ?? transaction
+          }
+        }
+      }
     }
 
     const voucherCode = transaction.voucher_code || undefined
@@ -44,21 +118,19 @@ export async function GET(
             .eq('id', transaction.portal_session_id)
             .single()
           redirectUrl = ps?.redirect_url ?? undefined
-          if (ps?.portal_auth_url) {
-            const params = new URLSearchParams({
-              clientMac: ps.client_mac,
-              apMac: ps.ap_mac,
-              ssidName: ps.ssid_name,
-              tp: ps.portal_auth_url,
-            })
-            if (ps.site_name) params.set('site', ps.site_name)
-            if (ps.portal_timestamp) params.set('t', ps.portal_timestamp)
-            if (ps.gateway_mac) params.set('gatewayMac', ps.gateway_mac)
-            if (ps.radio_id) params.set('radioId', ps.radio_id)
-            if (ps.vid) params.set('vid', ps.vid)
-            if (ps.redirect_url) params.set('redirectUrl', ps.redirect_url)
-            portalUrl = `/portal?${params.toString()}`
-          }
+          const params = new URLSearchParams({
+            clientMac: ps?.client_mac || '',
+            apMac: ps?.ap_mac || '',
+            ssidName: ps?.ssid_name || '',
+          })
+          if (ps?.portal_auth_url) params.set('tp', ps.portal_auth_url)
+          if (ps?.site_name) params.set('site', ps.site_name)
+          if (ps?.portal_timestamp) params.set('t', ps.portal_timestamp)
+          if (ps?.gateway_mac) params.set('gatewayMac', ps.gateway_mac)
+          if (ps?.radio_id) params.set('radioId', ps.radio_id)
+          if (ps?.vid) params.set('vid', ps.vid)
+          if (ps?.redirect_url) params.set('redirectUrl', ps.redirect_url)
+          portalUrl = `/portal?${params.toString()}`
         }
         break
       case 'PAYMENT_FAILED':     message = 'Payment failed. Please try again.'; break
