@@ -163,7 +163,9 @@ export default function PackagesInner() {
       setError('Weka namba ya vocha kwanza.')
       return
     }
-    if (!searchParams.get('tp')) {
+
+    const portalTarget = searchParams.get('tp') || searchParams.get('redirectUrl') || searchParams.get('originUrl')
+    if (!portalTarget) {
       setError('Anwani ya kuingia Wi-Fi haipo. Zima kisha washa Wi-Fi ujaribu tena.')
       return
     }

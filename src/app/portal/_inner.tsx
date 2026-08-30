@@ -23,7 +23,7 @@ export default function PortalPage() {
   const vid        = searchParams.get('vid')        || ''
   const redirectUrl = searchParams.get('redirectUrl') || ''
   const originUrl  = searchParams.get('originUrl') || redirectUrl
-  const tp         = searchParams.get('tp')         || '' // Omada submit URL base
+  const tp         = searchParams.get('tp') || searchParams.get('redirectUrl') || searchParams.get('originUrl') || '' // Omada submit URL base or redirect fallback
 
   const [tab, setTab] = useState<'voucher' | 'user'>('voucher')
   const [voucher, setVoucher] = useState('')
