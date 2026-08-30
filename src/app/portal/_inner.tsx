@@ -23,7 +23,8 @@ export default function PortalPage() {
   const vid        = searchParams.get('vid')        || ''
   const redirectUrl = searchParams.get('redirectUrl') || ''
   const originUrl  = searchParams.get('originUrl') || redirectUrl
-  const tp         = searchParams.get('tp') || searchParams.get('redirectUrl') || searchParams.get('originUrl') || '' // Omada submit URL base or redirect fallback
+  const tp         = searchParams.get('tp') || ''
+  const sessionToken = searchParams.get('token') || ''
 
   const [tab, setTab] = useState<'voucher' | 'user'>('voucher')
   const [voucher, setVoucher] = useState('')
@@ -45,8 +46,31 @@ export default function PortalPage() {
   const handleVoucherLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!voucher.trim()) { setError('Weka namba ya vocha yako'); return }
-    if (!omadaSubmitUrl) { setError('Anwani ya kuingia Wi-Fi haipo. Zima kisha washa Wi-Fi ujaribu tena.'); return }
     setLoading(true); setError('')
+
+    if (!omadaSubmitUrl) {
+      if (!sessionToken) {
+        setError('Kikao cha Wi-Fi kimeisha. Zima kisha washa Wi-Fi ujaribu tena.')
+        setLoading(false)
+        return
+      }
+      try {
+        const response = await fetch('/api/portal/voucher', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionToken, voucherCode: voucher.trim() }),
+        })
+        const result = await response.json()
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Vocha imekataliwa na Omada.')
+        }
+        window.location.href = result.data?.redirectUrl || '/'
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Imeshindikana kuunganisha vocha.')
+        setLoading(false)
+      }
+      return
+    }
 
     // Submit to Omada controller directly (standard portal submit)
     const form = document.createElement('form')
@@ -74,8 +98,13 @@ export default function PortalPage() {
   const handleUserLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!username.trim() || !password) { setError('Weka jina la mtumiaji na neno la siri'); return }
-    if (!omadaSubmitUrl) { setError('Anwani ya kuingia Wi-Fi haipo. Zima kisha washa Wi-Fi ujaribu tena.'); return }
     setLoading(true); setError('')
+
+    if (!omadaSubmitUrl) {
+      setError('Kuingia kwa jina la mtumiaji kunahitaji anwani ya Omada portal.')
+      setLoading(false)
+      return
+    }
 
     const form = document.createElement('form')
     form.method = 'POST'

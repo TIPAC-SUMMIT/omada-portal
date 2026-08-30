@@ -179,6 +179,7 @@ export default function PackagesInner() {
     // Keep the voucher exactly as printed. Omada voucher codes are case-sensitive.
     params.set('voucher', cleanVoucher)
     params.set('voucherCode', cleanVoucher)
+    if (sessionToken) params.set('token', sessionToken)
 
     window.location.href = `/portal?${params.toString()}`
   }

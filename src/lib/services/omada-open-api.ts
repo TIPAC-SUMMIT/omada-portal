@@ -36,6 +36,15 @@ export interface OmadaClientAuthorization {
   durationSeconds: number
 }
 
+export interface OmadaVoucherAuthorization {
+  clientMac: string
+  apMac: string
+  ssidName: string
+  radioId: string
+  site: string
+  voucherCode: string
+}
+
 export function calculateOmadaVoucherDurationMinutes(durationSeconds: number): number {
   if (!Number.isInteger(durationSeconds) || durationSeconds < 60) {
     throw new Error('Omada authorization duration must be at least 60 seconds')
@@ -261,6 +270,46 @@ export async function authorizeOmadaClient(input: OmadaClientAuthorization): Pro
         site: input.site || ENV.OMADA_SITE_NAME,
         time: durationMillis,
         authType: 4,
+      }),
+    },
+    login.cookies
+  )
+}
+
+export async function authorizeOmadaVoucher(input: OmadaVoucherAuthorization): Promise<void> {
+  if (!ENV.OMADA_CONTROLLER_URL || !ENV.OMADA_CONTROLLER_ID ||
+      !ENV.OMADA_OPERATOR_USERNAME || !ENV.OMADA_OPERATOR_PASSWORD) {
+    throw new Error('OMADA_CONTROLLER_URL, OMADA_CONTROLLER_ID and hotspot operator credentials are required')
+  }
+
+  const voucherCode = input.voucherCode.trim()
+  if (!voucherCode) throw new Error('Voucher code is required')
+
+  const login = await controllerRequest<{ token: string }>(
+    '/api/v2/hotspot/login',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        name: ENV.OMADA_OPERATOR_USERNAME,
+        password: ENV.OMADA_OPERATOR_PASSWORD,
+      }),
+    }
+  )
+  if (!login.data?.token) throw new Error('Omada controller did not return a CSRF token')
+
+  await controllerRequest(
+    '/api/v2/hotspot/extPortal/auth',
+    {
+      method: 'POST',
+      headers: { 'Csrf-Token': login.data.token },
+      body: JSON.stringify({
+        clientMac: input.clientMac,
+        apMac: input.apMac,
+        ssidName: input.ssidName,
+        radioId: input.radioId,
+        site: input.site || ENV.OMADA_SITE_NAME,
+        voucherCode,
+        authType: 3,
       }),
     },
     login.cookies
