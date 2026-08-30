@@ -35,9 +35,9 @@ export default function PortalPage() {
 
   // Pre-fill voucher if redirected back from payment page with ?voucher=CODE
   useEffect(() => {
-    const preVoucher = searchParams.get('voucher')
-    if (preVoucher) setVoucher(preVoucher)
-  }, [])
+    const preVoucher = searchParams.get('voucher') ?? searchParams.get('voucherCode') ?? ''
+    if (preVoucher) setVoucher(preVoucher.trim())
+  }, [searchParams])
 
   // URLSearchParams has already decoded the tp value supplied by Omada.
   const omadaSubmitUrl = tp
@@ -53,8 +53,10 @@ export default function PortalPage() {
     form.method = 'POST'
     form.action = omadaSubmitUrl
 
+    const voucherValue = voucher.trim()
     const fields: Record<string, string> = {
-      voucherCode: voucher.trim(),
+      voucherCode: voucherValue,
+      voucher: voucherValue,
       clientMac, apMac, ssidName, gatewayMac, radioId, vid,
       originUrl,
       authType: '3', // Omada voucher authentication

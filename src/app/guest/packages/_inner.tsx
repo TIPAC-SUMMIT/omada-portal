@@ -123,7 +123,8 @@ export default function PackagesInner() {
   }
 
   const handleVoucher = () => {
-    if (!voucher.trim()) {
+    const cleanVoucher = voucher.trim()
+    if (!cleanVoucher) {
       setError('Weka namba ya vocha kwanza.')
       return
     }
@@ -131,12 +132,17 @@ export default function PackagesInner() {
       setError('Anwani ya kuingia Wi-Fi haipo. Zima kisha washa Wi-Fi ujaribu tena.')
       return
     }
+
     const params = new URLSearchParams()
     for (const key of ['clientMac', 'apMac', 'ssidName', 'site', 't', 'gatewayMac', 'radioId', 'vid', 'originUrl', 'redirectUrl', 'tp']) {
       const value = searchParams.get(key)
       if (value) params.set(key, value)
     }
-    params.set('voucher', voucher.trim())
+
+    // Keep the voucher exactly as printed. Omada voucher codes are case-sensitive.
+    params.set('voucher', cleanVoucher)
+    params.set('voucherCode', cleanVoucher)
+
     window.location.href = `/portal?${params.toString()}`
   }
 
