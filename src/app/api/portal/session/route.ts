@@ -20,6 +20,48 @@ import {
 import { PORTAL_SESSION_EXPIRY_MINUTES, HTTP_STATUS } from '@/lib/constants'
 import type { Site, Package } from '@/lib/types'
 
+export async function GET(request: NextRequest) {
+  try {
+    const token = request.nextUrl.searchParams.get('token')
+    if (!token) {
+      return Response.json(apiError('Session token is required', 'INVALID_SESSION'), {
+        status: HTTP_STATUS.BAD_REQUEST
+      })
+    }
+
+    const { data: session, error } = await supabaseAdmin
+      .from('portal_sessions')
+      .select('client_mac, ap_mac, ssid_name, site_name, portal_timestamp, gateway_mac, radio_id, vid, redirect_url, portal_auth_url')
+      .eq('session_token_hash', hashSessionToken(token))
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle()
+
+    if (error || !session) {
+      return Response.json(apiError('Invalid or expired session', 'INVALID_SESSION'), {
+        status: HTTP_STATUS.UNAUTHORIZED
+      })
+    }
+
+    return Response.json(apiSuccess({
+      clientMac: session.client_mac,
+      apMac: session.ap_mac,
+      ssidName: session.ssid_name,
+      site: session.site_name,
+      t: session.portal_timestamp,
+      gatewayMac: session.gateway_mac,
+      radioId: session.radio_id,
+      vid: session.vid,
+      redirectUrl: session.redirect_url,
+      tp: session.portal_auth_url,
+    }))
+  } catch (error) {
+    logError(error, 'Portal session lookup')
+    return Response.json(apiError('Unable to recover portal session'), {
+      status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+    })
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Parse and validate request

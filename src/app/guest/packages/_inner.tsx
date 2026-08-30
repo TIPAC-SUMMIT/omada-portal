@@ -65,11 +65,46 @@ export default function PackagesInner() {
       }, 500)
       return () => clearTimeout(timer)
     }
+
+    const recoverPortalParams = async () => {
+      const hasTp = !!searchParams.get('tp')
+      if (!hasTp) {
+        try {
+          const r = await fetch(`/api/portal/session?token=${encodeURIComponent(sessionToken)}`)
+          const data = await r.json()
+          if (data.success && data.data?.tp) {
+            const params = new URLSearchParams(window.location.search)
+            const recovered = data.data
+            for (const [key, value] of Object.entries({
+              clientMac: recovered.clientMac,
+              apMac: recovered.apMac,
+              ssidName: recovered.ssidName,
+              site: recovered.site,
+              t: recovered.t,
+              gatewayMac: recovered.gatewayMac,
+              radioId: recovered.radioId,
+              vid: recovered.vid,
+              redirectUrl: recovered.redirectUrl,
+              tp: recovered.tp,
+            })) {
+              if (value) params.set(key, String(value))
+            }
+            const query = params.toString()
+            window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`)
+          }
+        } catch {
+          // Ignore fallback recovery errors; the user can still retry from the portal.
+        }
+      }
+    }
+
+    recoverPortalParams()
+
     fetch('/api/portal/packages', { headers: { Authorization: `Bearer ${sessionToken}` } })
       .then(r => r.json())
       .then(d => { setPackages(d.data || []); setLoading(false) })
       .catch(() => { setError('Imeshindikana kupakia vifurushi.'); setLoading(false) })
-  }, [sessionToken])
+  }, [sessionToken, searchParams])
 
   const handleSelect = async (pkg: Package) => {
     setError('')
