@@ -8,7 +8,10 @@ import { normalizePhoneNumber, validateTanzanianPhone } from '@/lib/utils'
 import type { Package } from '@/lib/types'
 
 const PROVIDER_ICONS: Record<string, string> = {
-  Vodacom: '🔴', Airtel: '🔴', Tigo: '🔵', Halotel: '🟠'
+  Vodacom: '🔴',
+  Airtel: '🔴',
+  Tigo: '🔵',
+  Halotel: '🟠',
 }
 
 const MOBILE_MONEY_NETWORKS = [
@@ -16,6 +19,7 @@ const MOBILE_MONEY_NETWORKS = [
   { name: 'Tigo Pesa', color: 'bg-blue-600', text: 'Tigo Pesa' },
   { name: 'Airtel Money', color: 'bg-red-500', text: 'Airtel Money' },
   { name: 'HaloPesa', color: 'bg-orange-500', text: 'HaloPesa' },
+  { name: 'TTCL', color: 'bg-sky-600', text: 'TTCL' },
 ]
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -58,7 +62,6 @@ export default function PackagesInner() {
 
   useEffect(() => {
     if (!sessionToken) {
-      // Wait a tick in case searchParams hasn't hydrated yet
       const timer = setTimeout(() => {
         if (!sessionToken) window.location.href = '/guest/login'
       }, 500)
@@ -101,8 +104,14 @@ export default function PackagesInner() {
 
     fetch('/api/portal/packages', { headers: { Authorization: `Bearer ${sessionToken}` } })
       .then(r => r.json())
-      .then(d => { setPackages(d.data || []); setLoading(false) })
-      .catch(() => { setError('Imeshindikana kupakia vifurushi.'); setLoading(false) })
+      .then(d => {
+        setPackages(d.data || [])
+        setLoading(false)
+      })
+      .catch(() => {
+        setError('Imeshindikana kupakia vifurushi.')
+        setLoading(false)
+      })
   }, [sessionToken, searchParams])
 
   const handleSelect = async (pkg: Package) => {
@@ -111,7 +120,7 @@ export default function PackagesInner() {
       const res = await fetch('/api/portal/packages/select', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
-        body: JSON.stringify({ packageId: pkg.id })
+        body: JSON.stringify({ packageId: pkg.id }),
       })
       const data = await res.json()
       if (!data.success) {
@@ -120,62 +129,88 @@ export default function PackagesInner() {
       }
       setSelectedPkg(pkg)
       setStep('pay')
-    } catch (e) {
+    } catch {
       setError('Tatizo la kuunganisha. Jaribu tena.')
     }
   }
 
   const handlePhoneChange = (val: string) => {
-    setPhone(val); setPhoneError(''); setProvider('')
+    setPhone(val)
+    setPhoneError('')
+    setProvider('')
     if (val.length >= 9) {
       try {
         const norm = normalizePhoneNumber(val)
-        if (!validateTanzanianPhone(norm)) { setPhoneError('Weka namba sahihi ya simu ya Tanzania') }
-        else setProvider(detectProvider(norm))
-      } catch { setPhoneError('Muundo wa namba si sahihi') }
+        if (!validateTanzanianPhone(norm)) {
+          setPhoneError('Weka namba sahihi ya simu ya Tanzania')
+        } else {
+          setProvider(detectProvider(norm))
+        }
+      } catch {
+        setPhoneError('Muundo wa namba si sahihi')
+      }
     }
   }
 
   const handlePay = async () => {
-    if (!phone) { setPhoneError('Namba ya simu inahitajika'); return }
+    if (!phone) {
+      setPhoneError('Namba ya simu inahitajika')
+      return
+    }
+
     try {
       const norm = normalizePhoneNumber(phone)
-      if (!validateTanzanianPhone(norm)) { setPhoneError('Weka namba sahihi ya simu ya Tanzania'); return }
-    } catch { setPhoneError('Muundo wa namba si sahihi'); return }
+      if (!validateTanzanianPhone(norm)) {
+        setPhoneError('Weka namba sahihi ya simu ya Tanzania')
+        return
+      }
+    } catch {
+      setPhoneError('Muundo wa namba si sahihi')
+      return
+    }
 
-    setSubmitting(true); setError('')
+    setSubmitting(true)
+    setError('')
+
     try {
       const res = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
-        body: JSON.stringify({ phoneNumber: phone })
+        body: JSON.stringify({ phoneNumber: phone }),
       })
       const data = await res.json()
-      if (!data.success) { setError(data.error || 'Malipo yameshindikana.'); setSubmitting(false); return }
+      if (!data.success) {
+        setError(data.error || 'Malipo yameshindikana.')
+        setSubmitting(false)
+        return
+      }
       window.location.href = `/guest/payment?reference=${data.data.reference}&phone=${encodeURIComponent(phone)}&token=${encodeURIComponent(sessionToken || '')}&pkg=${encodeURIComponent(data.data.packageName || '')}&amount=${data.data.amount || ''}`
-    } catch { setError('Tatizo la kuunganisha. Jaribu tena.'); setSubmitting(false) }
+    } catch {
+      setError('Tatizo la kuunganisha. Jaribu tena.')
+      setSubmitting(false)
+    }
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-900 via-brand-800 to-gray-900 flex items-center justify-center">
-      <div className="text-center">
-        <Loader2 className="w-12 h-12 animate-spin text-brand-300 mx-auto mb-4" />
-        <p className="text-brand-200">Inapakia vifurushi…</p>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-brand-900 via-brand-800 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-brand-300 mx-auto mb-4" />
+          <p className="text-brand-200">Inapakia vifurushi…</p>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-900 via-brand-800 to-gray-900">
-      {/* Header */}
       <div className="px-4 pt-4 pb-3 text-center">
         <div className="inline-flex items-center justify-center w-11 h-11 bg-white/10 backdrop-blur rounded-xl mb-2">
           <Wifi className="w-6 h-6 text-white" />
         </div>
-        <h1 className="text-xl font-bold text-white">TIPAC SUMMIT</h1>
+        <h1 className="text-xl font-bold text-white">KASI WIFI</h1>
         <p className="text-brand-200 text-xs mt-0.5">Internet ya Wi-Fi yenye kasi</p>
 
-        {/* Trust badges */}
         <div className="flex items-center justify-center gap-3 mt-2">
           <div className="flex items-center gap-1.5 text-brand-300 text-xs">
             <Shield className="w-3.5 h-3.5" /> Malipo salama
@@ -201,11 +236,11 @@ export default function PackagesInner() {
               {packages.map((pkg, i) => {
                 const popular = i === 1
                 return (
-                  <button key={pkg.id} onClick={() => handleSelect(pkg)}
-                    className={`w-full text-left rounded-xl p-3 transition-all active:scale-95 relative overflow-hidden
-                      ${popular
-                        ? 'bg-brand-500 border-2 border-brand-300 shadow-lg shadow-brand-900/50'
-                        : 'bg-white/10 border border-white/20 hover:bg-white/15'}`}>
+                  <button
+                    key={pkg.id}
+                    onClick={() => handleSelect(pkg)}
+                    className={`w-full text-left rounded-xl p-3 transition-all active:scale-95 relative overflow-hidden ${popular ? 'bg-brand-500 border-2 border-brand-300 shadow-lg shadow-brand-900/50' : 'bg-white/10 border border-white/20 hover:bg-white/15'}`}
+                  >
                     {popular && (
                       <span className="absolute top-1 right-1 bg-yellow-400 text-yellow-900 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                         INAPENDWA
@@ -222,9 +257,7 @@ export default function PackagesInner() {
                         </div>
                       </div>
                       <div className="flex items-center justify-between mt-2">
-                        <p className="text-base font-bold text-white">
-                          TZS {pkg.price_tzs.toLocaleString()}
-                        </p>
+                        <p className="text-base font-bold text-white">TZS {pkg.price_tzs.toLocaleString()}</p>
                         <ArrowRight className={`w-4 h-4 ${popular ? 'text-brand-100' : 'text-brand-400'}`} />
                       </div>
                     </div>
@@ -233,10 +266,9 @@ export default function PackagesInner() {
               })}
             </div>
 
-            {/* Supported networks */}
             <div className="mt-3 bg-white/5 rounded-xl p-2.5">
               <p className="text-brand-300 text-[11px] text-center mb-2">Mitandao ya pesa inayokubalika</p>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-5 gap-1.5">
                 {MOBILE_MONEY_NETWORKS.map(network => (
                   <div key={network.name} className={`${network.color} rounded-md py-1.5 px-0.5 text-center shadow-sm`}>
                     <p className="text-white text-[10px] font-bold truncate">{network.text}</p>
@@ -248,15 +280,12 @@ export default function PackagesInner() {
             <div className="mt-3 border-t border-white/10 pt-2 text-center text-[11px] text-brand-200">
               Kwa msaada piga namba{' '}
               <a className="font-semibold text-white" href="tel:0704170040">0704 170 040</a>
-              {' '}au{' '}
-              <a className="font-semibold text-white" href="tel:0749779776">0749 779 776</a>
             </div>
           </>
         )}
 
         {step === 'pay' && selectedPkg && (
           <>
-            {/* Selected package summary */}
             <div className="bg-white/10 border border-white/20 rounded-2xl p-4 mb-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -269,13 +298,19 @@ export default function PackagesInner() {
                 </div>
                 <div className="text-right">
                   <p className="text-white font-bold text-2xl">TZS {selectedPkg.price_tzs.toLocaleString()}</p>
-                  <button onClick={() => { setStep('select'); setSelectedPkg(null) }}
-                    className="text-brand-300 text-xs mt-1 hover:text-white">Badilisha</button>
+                  <button
+                    onClick={() => {
+                      setStep('select')
+                      setSelectedPkg(null)
+                    }}
+                    className="text-brand-300 text-xs mt-1 hover:text-white"
+                  >
+                    Badilisha
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Phone input */}
             <div className="bg-white rounded-2xl p-5 shadow-xl">
               <label className="block text-sm font-semibold text-gray-700 mb-3">
                 Weka namba yako ya pesa ya simu
@@ -287,9 +322,7 @@ export default function PackagesInner() {
                   value={phone}
                   onChange={e => handlePhoneChange(e.target.value)}
                   placeholder="0687 123 456"
-                  className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl text-gray-900 text-lg
-                    focus:outline-none transition-colors
-                    ${phoneError ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-brand-500'}`}
+                  className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl text-gray-900 text-lg focus:outline-none transition-colors ${phoneError ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-brand-500'}`}
                   disabled={submitting}
                 />
                 {provider && !phoneError && (
@@ -299,21 +332,27 @@ export default function PackagesInner() {
                 )}
               </div>
               {phoneError && <p className="text-red-500 text-sm mt-1.5">{phoneError}</p>}
-              <p className="text-gray-400 text-xs mt-2">Mfano: 0687 123 456 au 255687123456</p>
+              <p className="text-gray-400 text-xs mt-2">Mfano: 0687 123 456  255687123456</p>
 
               <button
                 onClick={handlePay}
                 disabled={submitting || !!phoneError || phone.length < 9}
-                className="w-full mt-4 bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300
-                  text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-lg">
-                {submitting
-                  ? <><Loader2 className="w-5 h-5 animate-spin" /> Inashughulikia…</>
-                  : <><CreditCard className="w-5 h-5" /> Lipa TZS {selectedPkg.price_tzs.toLocaleString()}</>}
+                className="w-full mt-4 bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-lg"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" /> Inashughulikia…
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-5 h-5" /> Lipa TZS {selectedPkg.price_tzs.toLocaleString()}
+                  </>
+                )}
               </button>
 
               <div className="flex items-center justify-center gap-2 mt-3">
                 <Shield className="w-3.5 h-3.5 text-gray-400" />
-                <p className="text-gray-400 text-xs">Malipo salama kupitia MalipoPay · TIPAC SUMMIT</p>
+                <p className="text-gray-400 text-xs">Malipo salama kupitia MalipoPay · KASI WIFI</p>
               </div>
             </div>
           </>
