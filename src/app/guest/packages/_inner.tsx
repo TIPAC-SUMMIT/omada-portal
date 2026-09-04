@@ -208,8 +208,8 @@ export default function PackagesInner() {
         <div className="inline-flex items-center justify-center w-11 h-11 bg-white/10 backdrop-blur rounded-xl mb-2">
           <Wifi className="w-6 h-6 text-white" />
         </div>
-        <h1 className="text-xl font-bold text-white">KASI WIFI</h1>
-        <p className="text-brand-200 text-xs mt-0.5">Internet ya Wi-Fi yenye kasi</p>
+        <h1 className="text-xl font-black tracking-tight text-white">KASI Wi-Fi</h1>
+        <p className="text-brand-100 text-xs mt-0.5">Internet ya Wi-Fi yenye kasi</p>
 
         <div className="flex items-center justify-center gap-3 mt-2">
           <div className="flex items-center gap-1.5 text-brand-300 text-xs">
@@ -352,7 +352,7 @@ export default function PackagesInner() {
 
               <div className="flex items-center justify-center gap-2 mt-3">
                 <Shield className="w-3.5 h-3.5 text-gray-400" />
-                <p className="text-gray-400 text-xs">Malipo salama kupitia MalipoPay · KASI WIFI</p>
+                <p className="text-gray-400 text-xs">Malipo salama kupitia MalipoPay · KASI Wi-Fi</p>
               </div>
             </div>
           </>

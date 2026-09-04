@@ -3,8 +3,8 @@ import './globals.css'
 import GuestFooter from './guest-footer'
 
 export const metadata: Metadata = {
-  title: 'KASI WIFI | Wi-Fi Access Portal',
-  description: 'Purchase internet access with mobile money — KASI WIFI',
+  title: 'KASI Wi-Fi | Wi-Fi Access Portal',
+  description: 'Purchase internet access with mobile money — KASI Wi-Fi',
   robots: 'noindex, nofollow',
 }
 

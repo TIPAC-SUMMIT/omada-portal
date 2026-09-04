@@ -106,8 +106,8 @@ export default function PortalPage() {
         <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur rounded-3xl mb-4 shadow-xl">
           <Wifi className="w-10 h-10 text-white" />
         </div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">KASI WIFI</h1>
-        <p className="text-brand-200 text-sm mt-1">Internet ya Wi-Fi yenye kasi</p>
+        <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-md">KASI Wi-Fi</h1>
+        <p className="text-brand-100 text-sm mt-1">Internet ya Wi-Fi yenye kasi</p>
         {ssidName && <p className="text-brand-400 text-xs mt-1">📶 {ssidName}</p>}
       </div>
 
@@ -185,7 +185,7 @@ export default function PortalPage() {
         </div>
       </div>
 
-      <p className="text-brand-400 text-xs mt-6">KASI WIFI Wi-Fi · MalipoPay</p>
+      <p className="text-brand-300 text-xs mt-6">KASI Wi-Fi · MalipoPay</p>
     </div>
   )
 }

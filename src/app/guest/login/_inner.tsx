@@ -65,12 +65,14 @@ export default function GuestLoginInner() {
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-brand-700 to-brand-900">
       <div className="text-center px-6">
-        <Wifi className="w-16 h-16 text-white mx-auto mb-4 animate-pulse" />
-        <h1 className="text-2xl font-bold text-white mb-1">KASI WIFI</h1>
-        <p className="text-brand-200 text-sm mb-8">Inatengeneza session yako…</p>
-        <div className="bg-white/10 rounded-xl p-6 max-w-sm mx-auto">
+        <div className="mb-4 rounded-full bg-white/10 p-4 shadow-[0_0_30px_rgba(255,255,255,0.18)] backdrop-blur-sm">
+          <Wifi className="w-14 h-14 text-white mx-auto animate-pulse" />
+        </div>
+        <h1 className="text-3xl font-black tracking-tight text-white mb-1 drop-shadow-md">KASI Wi-Fi</h1>
+        <p className="text-brand-100 text-sm mb-8">Inatengeneza session yako…</p>
+        <div className="bg-white/10 rounded-2xl p-6 max-w-sm mx-auto border border-white/10 shadow-2xl backdrop-blur-sm">
           <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-3" />
-          <p className="text-white">Inatengeneza session yako…</p>
+          <p className="text-white font-medium">Inatengeneza session yako…</p>
         </div>
       </div>
     </div>

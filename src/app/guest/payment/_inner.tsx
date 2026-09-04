@@ -106,7 +106,7 @@ export default function PaymentInner() {
 
           <p className="text-gray-400 text-xs mt-4">Weka namba hii kwenye ukurasa wa kuingia Wi-Fi</p>
         </div>
-        <p className="text-green-200 text-xs mt-4">KASI WIFI Wi-Fi</p>
+        <p className="text-green-200 text-xs mt-4">KASI Wi-Fi</p>
       </div>
     </div>
   )
@@ -212,7 +212,7 @@ export default function PaymentInner() {
             </div>
           )}
         </div>
-        <p className="text-brand-300 text-xs text-center mt-4">Malipo salama kupitia MalipoPay · KASI WIFI</p>
+        <p className="text-brand-300 text-xs text-center mt-4">Malipo salama kupitia MalipoPay · KASI Wi-Fi</p>
       </div>
     </div>
   )
