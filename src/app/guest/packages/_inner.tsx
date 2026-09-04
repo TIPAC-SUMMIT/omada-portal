@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Clock, CreditCard, Phone, Ticket, AlertCircle, Wifi, Shield, Zap, ArrowRight, Loader2 } from 'lucide-react'
+import { Clock, CreditCard, Phone, AlertCircle, Wifi, Shield, Zap, ArrowRight, Loader2 } from 'lucide-react'
 import { formatDurationSwahili } from '@/lib/constants'
 import { normalizePhoneNumber, validateTanzanianPhone } from '@/lib/utils'
 import type { Package } from '@/lib/types'
@@ -49,7 +49,6 @@ export default function PackagesInner() {
   const [packages, setPackages] = useState<Package[]>([])
   const [selectedPkg, setSelectedPkg] = useState<Package | null>(null)
   const [phone, setPhone] = useState('')
-  const [voucher, setVoucher] = useState('')
   const [phoneError, setPhoneError] = useState('')
   const [provider, setProvider] = useState('')
   const [loading, setLoading] = useState(true)
@@ -157,33 +156,6 @@ export default function PackagesInner() {
     } catch { setError('Tatizo la kuunganisha. Jaribu tena.'); setSubmitting(false) }
   }
 
-  const handleVoucher = () => {
-    const cleanVoucher = voucher.trim()
-    if (!cleanVoucher) {
-      setError('Weka namba ya vocha kwanza.')
-      return
-    }
-
-    const portalTarget = searchParams.get('tp') || searchParams.get('redirectUrl') || searchParams.get('originUrl')
-    if (!portalTarget) {
-      setError('Anwani ya kuingia Wi-Fi haipo. Zima kisha washa Wi-Fi ujaribu tena.')
-      return
-    }
-
-    const params = new URLSearchParams()
-    for (const key of ['clientMac', 'apMac', 'ssidName', 'site', 't', 'gatewayMac', 'radioId', 'vid', 'originUrl', 'redirectUrl', 'tp']) {
-      const value = searchParams.get(key)
-      if (value) params.set(key, value)
-    }
-
-    // Keep the voucher exactly as printed. Omada voucher codes are case-sensitive.
-    params.set('voucher', cleanVoucher)
-    params.set('voucherCode', cleanVoucher)
-    if (sessionToken) params.set('token', sessionToken)
-
-    window.location.href = `/portal?${params.toString()}`
-  }
-
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-brand-900 via-brand-800 to-gray-900 flex items-center justify-center">
       <div className="text-center">
@@ -259,28 +231,6 @@ export default function PackagesInner() {
                   </button>
                 )
               })}
-            </div>
-
-            {/* Printed voucher comes immediately after packages for shop purchases. */}
-            <div className="mt-3 rounded-xl border border-yellow-300/30 bg-yellow-400/10 p-3">
-              <p className="text-white text-sm font-semibold text-center">Ulinunua vocha kwa cash?</p>
-              <p className="text-brand-200 text-xs mt-0.5 text-center">Weka namba ya vocha uliyopewa dukani.</p>
-              <div className="mt-2 flex gap-2">
-                <div className="relative flex-1">
-                  <Ticket className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                  <input
-                    value={voucher}
-                    onChange={e => { setVoucher(e.target.value); setError('') }}
-                    placeholder="Namba ya vocha"
-                    className="w-full rounded-lg border-0 py-2 pl-9 pr-3 font-mono text-sm text-gray-900"
-                    autoComplete="off"
-                  />
-                </div>
-                <button onClick={handleVoucher}
-                  className="rounded-lg bg-yellow-400 px-3 py-2 text-sm font-bold text-yellow-950 hover:bg-yellow-300">
-                  Tumia
-                </button>
-              </div>
             </div>
 
             {/* Supported networks */}
