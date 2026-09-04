@@ -66,11 +66,11 @@ export default function GuestLoginInner() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-brand-700 to-brand-900">
       <div className="text-center px-6">
         <Wifi className="w-16 h-16 text-white mx-auto mb-4 animate-pulse" />
-        <h1 className="text-2xl font-bold text-white mb-1">TIPAC SUMMIT</h1>
-        <p className="text-brand-200 text-sm mb-8">Ukurasa wa kuunganisha Wi-Fi</p>
+        <h1 className="text-2xl font-bold text-white mb-1">KASI WIFI</h1>
+        <p className="text-brand-200 text-sm mb-8">Inatengeneza session yako…</p>
         <div className="bg-white/10 rounded-xl p-6 max-w-sm mx-auto">
           <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-3" />
-          <p className="text-white">Inaandaa kuunganisha kwako…</p>
+          <p className="text-white">Inatengeneza session yako…</p>
         </div>
       </div>
     </div>
