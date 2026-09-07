@@ -39,8 +39,31 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
+    const controllerIds = (controllers ?? []).map(controller => controller.id)
+    const { data: siteRows, error: siteError } = controllerIds.length
+      ? await supabaseAdmin
+        .from('sites')
+        .select('id, name, primary_controller_id')
+        .in('primary_controller_id', controllerIds)
+      : { data: [], error: null }
+    if (siteError) throw siteError
+
+    const sitesByController = new Map<string, Array<{ id: string; name: string }>>()
+    for (const site of siteRows ?? []) {
+      if (!site.primary_controller_id) continue
+      const list = sitesByController.get(site.primary_controller_id) ?? []
+      list.push({ id: site.id, name: site.name })
+      sitesByController.set(site.primary_controller_id, list)
+    }
+
     // Note: cloud_api_client_secret_ciphertext and password ciphertexts are NOT returned
-    return Response.json(apiSuccess({ controllers: controllers || [] }))
+    return Response.json(apiSuccess({
+      controllers: (controllers || []).map(controller => ({
+        ...controller,
+        sites: sitesByController.get(controller.id) ?? [],
+        site_count: sitesByController.get(controller.id)?.length ?? 0
+      }))
+    }))
   } catch (error) {
     logError(error, 'Controllers list')
     return Response.json(

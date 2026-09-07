@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabaseAdmin
       .from('client_authorizations')
-      .select('id,transaction_id,client_mac,ap_mac,ssid_name,status,duration_seconds,authorized_at,expires_at,sites!client_authorizations_site_id_fkey(name),payment_transactions!client_authorizations_transaction_id_fkey(reference,phone_number,amount_tzs,voucher_code,packages!payment_transactions_package_id_fkey(name))')
+      .select('id,transaction_id,client_mac,ap_mac,ssid_name,status,duration_seconds,authorized_at,expires_at,controller_id,access_point_id,controller_name,ap_mac_resolved,ap_name,sites!client_authorizations_site_id_fkey(name),payment_transactions!client_authorizations_transaction_id_fkey(reference,phone_number,amount_tzs,voucher_code,packages!payment_transactions_package_id_fkey(name))')
       .eq('status', 'ACTIVE')
       .gt('expires_at', new Date().toISOString())
       .order('authorized_at', { ascending: false })
@@ -21,13 +21,17 @@ export async function GET(request: NextRequest) {
       if (!admin.sites?.length) return Response.json(apiSuccess([]))
       query = query.in('site_id', admin.sites)
     }
+    const controllerId = request.nextUrl.searchParams.get('controller_id')
+    const accessPointId = request.nextUrl.searchParams.get('access_point_id')
+    if (controllerId) query = query.eq('controller_id', controllerId)
+    if (accessPointId) query = query.eq('access_point_id', accessPointId)
 
     const { data, error } = await query
     if (error) throw error
 
     let paymentQuery = supabaseAdmin
       .from('payment_transactions')
-      .select('id,reference,status,client_mac,ap_mac,ssid_name,amount_tzs,phone_number,created_at,error_code,error_message,sites!payment_transactions_site_id_fkey(name),packages!payment_transactions_package_id_fkey(name)')
+      .select('id,reference,status,client_mac,ap_mac,ssid_name,amount_tzs,phone_number,created_at,error_code,error_message,controller_id,access_point_id,controller_name,ap_mac_resolved,ap_name,sites!payment_transactions_site_id_fkey(name),packages!payment_transactions_package_id_fkey(name)')
       .in('status', ['PENDING', 'PAYMENT_INITIATED', 'PAYMENT_SUCCESS', 'OMADA_AUTHORIZING', 'AUTHORIZATION_FAILED'])
       .order('created_at', { ascending: false })
       .limit(200)
@@ -35,6 +39,8 @@ export async function GET(request: NextRequest) {
       if (!admin.sites?.length) return Response.json(apiSuccess([]))
       paymentQuery = paymentQuery.in('site_id', admin.sites)
     }
+    if (controllerId) paymentQuery = paymentQuery.eq('controller_id', controllerId)
+    if (accessPointId) paymentQuery = paymentQuery.eq('access_point_id', accessPointId)
     const { data: payments, error: paymentError } = await paymentQuery
     if (paymentError) throw paymentError
 

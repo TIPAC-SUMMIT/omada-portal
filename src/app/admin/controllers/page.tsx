@@ -5,6 +5,8 @@ import type { OmadaController } from '@/lib/types'
 
 interface Controller extends OmadaController {
   site_name?: string
+  site_count?: number
+  sites?: Array<{ id: string; name: string }>
 }
 
 export default function ControllersPage() {
@@ -221,7 +223,8 @@ export default function ControllersPage() {
                   <tr key={c.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
                     <td className="px-4 py-3 text-gray-500">
-                      {sites.find(s => s.id === c.site_id)?.name || '—'}
+                      <div>{c.site_count ?? c.sites?.length ?? 0} site{(c.site_count ?? c.sites?.length ?? 0) === 1 ? '' : 's'}</div>
+                      {c.site_count === 1 && c.sites?.[0] && <div className="text-xs text-gray-400">{c.sites[0].name}</div>}
                     </td>
                     <td className="px-4 py-3">
                       {c.cloud_api_url ? (

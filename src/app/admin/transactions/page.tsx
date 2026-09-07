@@ -33,7 +33,11 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [sites, setSites] = useState<Site[]>([])
+  const [controllers, setControllers] = useState<Array<{ id: string; name: string }>>([])
+  const [accessPoints, setAccessPoints] = useState<Array<{ id: string; name: string | null; ap_mac: string }>>([])
   const [siteId, setSiteId] = useState('')
+  const [controllerId, setControllerId] = useState('')
+  const [accessPointId, setAccessPointId] = useState('')
   const [status, setStatus] = useState('')
   const [selected, setSelected] = useState<Transaction | null>(null)
   const [retrying, setRetrying] = useState(false)
@@ -45,7 +49,8 @@ export default function TransactionsPage() {
       const token = localStorage.getItem('admin_token')
       const params = new URLSearchParams({
         page: String(p), limit: String(LIMIT),
-        ...(search && { search }), ...(siteId && { site_id: siteId }), ...(status && { status })
+        ...(search && { search }), ...(siteId && { site_id: siteId }), ...(controllerId && { controller_id: controllerId }),
+        ...(accessPointId && { access_point_id: accessPointId }), ...(status && { status })
       })
       const res = await fetch(`/api/admin/transactions?${params}`, { headers: { Authorization: `Bearer ${token}` } })
       const data = await res.json()
@@ -54,10 +59,15 @@ export default function TransactionsPage() {
   }
 
   useEffect(() => {
-    fetch('/api/admin/sites')
-      .then(res => res.json())
-      .then(data => { if (data.success) setSites(data.data) })
-      .catch(() => {})
+    Promise.all([
+      fetch('/api/admin/sites').then(res => res.json()),
+      fetch('/api/admin/controllers').then(res => res.json()),
+      fetch('/api/admin/access-points').then(res => res.json())
+    ]).then(([siteData, controllerData, accessPointData]) => {
+      if (siteData.success) setSites(siteData.data)
+      if (controllerData.success) setControllers(controllerData.data.controllers ?? [])
+      if (accessPointData.success) setAccessPoints(accessPointData.data)
+    }).catch(() => {})
     load()
   }, [])
 
@@ -104,6 +114,14 @@ export default function TransactionsPage() {
           <select className="input-field py-2 text-sm" value={siteId} onChange={e => { setSiteId(e.target.value); load(1) }}>
             <option value="">All sites</option>
             {sites.map(site => <option key={site.id} value={site.id}>{site.name}</option>)}
+          </select>
+          <select className="input-field py-2 text-sm" value={controllerId} onChange={e => { setControllerId(e.target.value); load(1) }}>
+            <option value="">All controllers</option>
+            {controllers.map(controller => <option key={controller.id} value={controller.id}>{controller.name}</option>)}
+          </select>
+          <select className="input-field py-2 text-sm" value={accessPointId} onChange={e => { setAccessPointId(e.target.value); load(1) }}>
+            <option value="">All EAPs</option>
+            {accessPoints.map(ap => <option key={ap.id} value={ap.id}>{ap.name || ap.ap_mac}</option>)}
           </select>
           <select className="input-field py-2 text-sm" value={status} onChange={e => { setStatus(e.target.value); load(1) }}>
             <option value="">All statuses</option>

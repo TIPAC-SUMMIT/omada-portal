@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(sp.get('limit') ?? '20')))
     const search = sp.get('search')?.trim()
     const siteId = sp.get('site_id')
+    const controllerId = sp.get('controller_id')
+    const accessPointId = sp.get('access_point_id')
     const status = sp.get('status')
     const offset = (page - 1) * limit
 
@@ -25,6 +27,8 @@ export async function GET(request: NextRequest) {
 
     if (admin.role === 'SITE_ADMIN' && admin.sites?.length) query = query.in('site_id', admin.sites)
     if (siteId) query = query.eq('site_id', siteId)
+    if (controllerId) query = query.eq('controller_id', controllerId)
+    if (accessPointId) query = query.eq('access_point_id', accessPointId)
     if (status) query = query.eq('status', status)
     if (search) query = query.or(`reference.ilike.%${search}%,phone_number.ilike.%${search}%`)
 

@@ -1,6 +1,7 @@
 'use client'
+
 import { useEffect, useState } from 'react'
-import { RefreshCw, Wifi } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import type { AuthorizationStatus } from '@/lib/types'
 
 interface Session {
@@ -11,23 +12,44 @@ interface Session {
   error_code?: string | null; error_message?: string | null
   sites: { name: string } | null
   packages: { name: string } | null
+  controller_name?: string | null
 }
 
 export default function SessionsPage() {
   const [rows, setRows] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
+  const [controllers, setControllers] = useState<Array<{ id: string; name: string }>>([])
+  const [accessPoints, setAccessPoints] = useState<Array<{ id: string; name: string | null; ap_mac: string }>>([])
+  const [controllerId, setControllerId] = useState('')
+  const [accessPointId, setAccessPointId] = useState('')
 
   const load = async () => {
     setLoading(true)
     try {
       const token = localStorage.getItem('admin_token')
-      const res = await fetch('/api/admin/sessions', { headers: { Authorization: `Bearer ${token}` } })
+      const params = new URLSearchParams()
+      if (controllerId) params.set('controller_id', controllerId)
+      if (accessPointId) params.set('access_point_id', accessPointId)
+      const res = await fetch(`/api/admin/sessions?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       const data = await res.json()
       if (data.success) setRows(data.data)
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/admin/controllers').then(res => res.json()),
+      fetch('/api/admin/access-points').then(res => res.json())
+    ]).then(([controllerData, accessPointData]) => {
+      if (controllerData.success) setControllers(controllerData.data.controllers ?? [])
+      if (accessPointData.success) setAccessPoints(accessPointData.data)
+    }).catch(() => {})
+    load()
+  }, [])
 
   const fmt = (d: string) => new Date(d).toLocaleString('en-TZ', { dateStyle: 'short', timeStyle: 'short' })
 
@@ -40,18 +62,31 @@ export default function SessionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Active Sessions</h1>
-        <button onClick={load} className="btn-secondary py-2 px-4 text-sm flex items-center gap-2">
-          <RefreshCw className="w-4 h-4" /> Refresh
-        </button>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Active Sessions</h1>
+          <p className="text-sm text-gray-500 mt-1">Live authorized users and payment operations by controller or EAP.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select className="input-field py-2 text-sm" value={controllerId} onChange={e => { setControllerId(e.target.value); setTimeout(load, 0) }}>
+            <option value="">All controllers</option>
+            {controllers.map(controller => <option key={controller.id} value={controller.id}>{controller.name}</option>)}
+          </select>
+          <select className="input-field py-2 text-sm" value={accessPointId} onChange={e => { setAccessPointId(e.target.value); setTimeout(load, 0) }}>
+            <option value="">All EAPs</option>
+            {accessPoints.map(ap => <option key={ap.id} value={ap.id}>{ap.name || ap.ap_mac}</option>)}
+          </select>
+          <button onClick={load} className="btn-secondary py-2 px-4 text-sm flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </button>
+        </div>
       </div>
 
       <div className="card overflow-x-auto">
-        <table className="w-full text-sm min-w-[700px]">
+        <table className="w-full text-sm min-w-[850px]">
           <thead className="bg-gray-50 text-gray-600 text-left">
             <tr>
-              {['Type','Voucher','Phone','Client MAC','Site','Package','Start Time','Expires','Status','Issue'].map(h => (
+              {['Type','Voucher','Phone','Client MAC','Site / Controller','EAP / AP','Package','Start Time','Expires','Status','Issue'].map(h => (
                 <th key={h} className="px-4 py-3 font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -67,7 +102,7 @@ export default function SessionsPage() {
                 <td className="px-4 py-3 font-mono text-xs text-green-700">{r.voucher_code ?? '—'}</td>
                 <td className="px-4 py-3 text-xs text-gray-700">{r.phone_number ?? '—'}</td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-700">{r.client_mac}</td>
-                <td className="px-4 py-3 text-gray-500">{r.sites?.name ?? '—'}</td>
+                <td className="px-4 py-3 text-gray-500"><div>{r.sites?.name ?? '—'}</div><div className="text-xs text-gray-400">{r.controller_name ?? 'Legacy controller'}</div></td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">{r.ap_mac}</td>
                 <td className="px-4 py-3 text-gray-500">{r.packages?.name ?? (r.amount_tzs ? `${r.amount_tzs} TZS` : '—')}</td>
                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmt(r.authorized_at ?? r.created_at)}</td>
