@@ -87,6 +87,7 @@ export interface Site {
   description: string | null
   status: SiteStatus
   timezone: string
+  primary_controller_id: string | null
   created_at: string
   updated_at: string
 }
@@ -99,17 +100,37 @@ export interface AdminSite {
 
 export interface OmadaController {
   id: string
-  site_id: string
+  site_id: string | null
   name: string
+
+  // Legacy fields
   controller_url: string | null
   omadac_id: string | null
   username: string | null
   password_secret_ref: string | null
   api_version: string
-  is_active: boolean
   use_site_connector: boolean
   site_connector_url: string | null
+
+  // Cloud Open API (Northbound) credentials - encrypted at rest
+  cloud_api_url: string | null
+  cloud_api_client_id: string | null
+  cloud_api_client_secret_ciphertext: string | null
+  cloud_api_omadac_id: string | null
+
+  // Controller API credentials - encrypted at rest
+  controller_id: string | null
+  controller_username_ciphertext: string | null
+  controller_password_ciphertext: string | null
+
+  // Health and monitoring
+  is_active: boolean
   last_seen_at: string | null
+  last_error_at: string | null
+  last_error_message: string | null
+  sync_status: string | null
+  synced_at: string | null
+
   created_at: string
   updated_at: string
 }
@@ -119,6 +140,7 @@ export interface AccessPoint {
   site_id: string
   controller_id: string | null
   ap_mac: string
+  omada_ap_id: string | null
   name: string | null
   model: string | null
   is_active: boolean
@@ -161,6 +183,8 @@ export interface PortalSession {
   id: string
   session_token_hash: string
   site_id: string | null
+  controller_id: string | null
+  access_point_id: string | null
   client_mac: string
   ap_mac: string
   ssid_name: string
@@ -180,6 +204,8 @@ export interface PaymentTransaction {
   id: string
   reference: string
   site_id: string | null
+  controller_id: string | null
+  access_point_id: string | null
   package_id: string | null
   portal_session_id: string | null
   client_mac: string
@@ -198,6 +224,12 @@ export interface PaymentTransaction {
   duration_seconds: number | null
   omada_voucher_group_id?: string | null
   voucher_code?: string | null
+  controller_name: string | null
+  ap_mac_resolved: string | null
+  ap_name: string | null
+  ap_model: string | null
+  omada_site_id_resolved: string | null
+  omada_account_id: string | null
   created_at: string
   updated_at: string
 }
@@ -206,6 +238,8 @@ export interface ClientAuthorization {
   id: string
   transaction_id: string
   site_id: string | null
+  controller_id: string | null
+  access_point_id: string | null
   portal_session_id: string | null
   client_mac: string
   ap_mac: string
@@ -217,6 +251,9 @@ export interface ClientAuthorization {
   revoked_at: string | null
   revoke_reason: string | null
   omada_response: any | null
+  controller_name: string | null
+  ap_mac_resolved: string | null
+  ap_name: string | null
   created_at: string
   updated_at: string
 }
@@ -411,4 +448,74 @@ export interface ErrorResponse {
 // Type guards for safer type checking
 export const isApiError = (response: any): response is ErrorResponse => {
   return response && response.success === false && typeof response.error === 'string'
+}
+// ============================================================================
+// Controller Sync Status Types
+// ============================================================================
+
+export type ControllerSyncStatus = 'pending' | 'syncing' | 'success' | 'error'
+
+// ============================================================================
+// Controller Management Request/Response Types
+// ============================================================================
+
+export interface CreateControllerRequest {
+  name: string
+  cloud_api_url?: string
+  cloud_api_client_id?: string
+  cloud_api_client_secret?: string  // write-only, encrypted on save
+  cloud_api_omadac_id?: string
+  controller_url?: string
+  controller_id?: string
+  controller_username?: string  // write-only, encrypted on save
+  controller_password?: string  // write-only, encrypted on save
+}
+
+export interface UpdateControllerRequest {
+  name?: string
+  cloud_api_url?: string
+  cloud_api_client_id?: string
+  cloud_api_client_secret?: string  // blank means no change; provide value to update
+  cloud_api_omadac_id?: string
+  controller_url?: string
+  controller_id?: string
+  controller_username?: string  // blank means no change
+  controller_password?: string  // blank means no change
+  is_active?: boolean
+}
+
+export interface ControllerResponse {
+  id: string
+  site_id: string
+  name: string
+  cloud_api_url: string | null
+  cloud_api_client_id: string | null
+  cloud_api_omadac_id: string | null
+  controller_url: string | null
+  controller_id: string | null
+  is_active: boolean
+  last_seen_at: string | null
+  last_error_message: string | null
+  sync_status: ControllerSyncStatus | null
+  synced_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ControllerTestResult {
+  success: boolean
+  message: string
+  errors?: {
+    cloud_api?: string
+    controller_api?: string
+  }
+}
+
+export interface ControllerSyncResult {
+  success: boolean
+  message: string
+  sites_synced?: number
+  sites_created?: number
+  sites_updated?: number
+  errors?: string[]
 }

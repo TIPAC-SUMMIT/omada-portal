@@ -18,7 +18,8 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { malipoPayService, mapMalipoPayStatus } from '@/lib/services/malipopay'
-import { authorizeOmadaClient, createOmadaVoucher } from '@/lib/services/omada-open-api'
+import { authorizeOmadaClient, createOmadaVoucher, CloudApiConfig, ControllerCredentials } from '@/lib/services/omada-open-api'
+import { getControllerCloudApiConfig, getControllerOperatorCredentials } from '@/lib/services/controller-routing'
 import { apiSuccess, apiError, logError, now } from '@/lib/utils'
 import { HTTP_STATUS } from '@/lib/constants'
 
@@ -38,7 +39,6 @@ export async function POST(request: NextRequest) {
   const authentic = malipoPayService.verifyWebhook(rawBody, signatureHeader)
   if (!authentic) {
     console.warn(JSON.stringify({ level: 'warn', event: 'WEBHOOK_INVALID_SIGNATURE', requestId }))
-    // Return 200 so MalipoPay doesn't retry a legitimately rejected delivery
     return Response.json({ received: true }, { status: HTTP_STATUS.OK })
   }
 
@@ -79,7 +79,6 @@ export async function POST(request: NextRequest) {
       level: 'error', event: 'WEBHOOK_TRANSACTION_NOT_FOUND',
       requestId, ourReference
     }))
-    // Return 200 — we don't want retries for references we don't recognise
     return Response.json({ received: true }, { status: HTTP_STATUS.OK })
   }
 
@@ -100,8 +99,6 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 6. Process normal payments and late provider success callbacks ─────────
-  // A provider can confirm a payment after our initiation request timed out.
-  // Allow that success through when no webhook has previously been processed.
   const mappedStatus = mapMalipoPayStatus(malipoStatus)
   const lateSuccess = mappedStatus === 'PAYMENT_SUCCESS' &&
     ['PAYMENT_FAILED', 'PAYMENT_TIMEOUT', 'EXPIRED'].includes(transaction.status)
@@ -122,7 +119,6 @@ export async function POST(request: NextRequest) {
       expected: transaction.amount_tzs, received: amount
     }))
 
-    // Atomically mark processed with failure to prevent future processing
     await supabaseAdmin
       .from('payment_transactions')
       .update({
@@ -138,8 +134,7 @@ export async function POST(request: NextRequest) {
     return Response.json({ received: true }, { status: HTTP_STATUS.OK })
   }
 
-  // A delayed success can arrive after a guest started a newer attempt.
-  // Release only still-pending attempts so the confirmed payment can be recorded.
+  // Handle superseding competing payments
   if (mappedStatus === 'PAYMENT_SUCCESS') {
     const { error: competingError } = await supabaseAdmin
       .from('payment_transactions')
@@ -161,7 +156,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // ── 8. Map status and atomically claim the webhook ─────────────────────────
+  // ── 8. Atomically claim the webhook ───────────────────────────────────────
   const { data: claimedRows, error: claimError } = await supabaseAdmin
     .from('payment_transactions')
     .update({
@@ -171,7 +166,7 @@ export async function POST(request: NextRequest) {
       status: mappedStatus
     })
     .eq('id', transaction.id)
-    .is('webhook_processed_at', null) // only claim if not yet processed
+    .is('webhook_processed_at', null)
     .select('id')
 
   if (claimError) {
@@ -183,7 +178,6 @@ export async function POST(request: NextRequest) {
   }
 
   if (!claimedRows || claimedRows.length === 0) {
-    // Race condition — another instance already claimed it
     console.log(JSON.stringify({ level: 'info', event: 'WEBHOOK_CLAIM_RACE', requestId, ourReference }))
     return Response.json({ received: true }, { status: HTTP_STATUS.OK })
   }
@@ -198,7 +192,7 @@ export async function POST(request: NextRequest) {
   if (mappedStatus === 'PAYMENT_SUCCESS') {
     await handlePaymentSuccess(transaction, malipoReference, requestId)
   } else {
-    // Payment failed/cancelled — reset session to PACKAGE_SELECTED so guest can retry
+    // Payment failed — reset session to PACKAGE_SELECTED so guest can retry
     await supabaseAdmin
       .from('portal_sessions')
       .update({ status: 'PACKAGE_SELECTED' })
@@ -220,10 +214,9 @@ export async function POST(request: NextRequest) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// After confirmed payment → authorize client in Omada
+// After confirmed payment → authorize client in Omada using controller
 // ─────────────────────────────────────────────────────────────────────────────
 async function handlePaymentSuccess(transaction: any, malipoReference: string, requestId: string) {
-  // Generate the voucher in Omada. This replaces the old CSV voucher pool.
   await supabaseAdmin
     .from('payment_transactions')
     .update({ status: 'OMADA_AUTHORIZING' })
@@ -236,16 +229,31 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
   })
 
   try {
+    // Get the controller for this transaction
+    // Use mapped credentials for new multi-controller transactions and keep
+    // the existing environment configuration for legacy transactions.
+    const cloudApiConfig = transaction.controller_id
+      ? await getControllerCloudApiConfig(transaction.controller_id)
+      : undefined
+    if (transaction.controller_id && !cloudApiConfig) {
+      throw new Error('Controller cloud API not configured')
+    }
+
+    // Get the site's Omada site ID
     const { data: site } = await supabaseAdmin
       .from('sites')
       .select('omada_site_id')
       .eq('id', transaction.site_id)
       .maybeSingle()
+
+    // Generate voucher using controller-specific config
     const voucher = await createOmadaVoucher(
       transaction.reference,
       transaction.duration_seconds,
-      site?.omada_site_id ?? undefined
+      site?.omada_site_id ?? undefined,
+      cloudApiConfig || undefined
     )
+
     const { error: voucherError } = await supabaseAdmin
       .from('payment_transactions')
       .update({
@@ -255,6 +263,7 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
       .eq('id', transaction.id)
     if (voucherError) throw voucherError
 
+    // Get portal session to get client details
     const { data: portalSession } = await supabaseAdmin
       .from('portal_sessions')
       .select('client_mac, ap_mac, ssid_name, site_name, radio_id')
@@ -266,6 +275,14 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
       throw new Error('Missing Omada client context for authorization')
     }
 
+    // Get controller's operator credentials for authorization
+    const operatorCreds = transaction.controller_id
+      ? await getControllerOperatorCredentials(transaction.controller_id)
+      : undefined
+    if (transaction.controller_id && !operatorCreds) {
+      throw new Error('Controller operator credentials not configured')
+    }
+
     await authorizeOmadaClient({
       clientMac: portalSession.client_mac,
       apMac: portalSession.ap_mac,
@@ -273,17 +290,39 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
       radioId: portalSession.radio_id,
       site: portalSession.site_name,
       durationSeconds: transaction.duration_seconds,
-    })
+    }, operatorCreds ? {
+      controllerUrl: operatorCreds.controllerUrl,
+      controllerId: operatorCreds.controllerId,
+      username: operatorCreds.username,
+      password: operatorCreds.password
+    } : undefined)
 
     const authorizedAt = now()
     const expiresAt = new Date(
       new Date(authorizedAt).getTime() + transaction.duration_seconds * 1000
     ).toISOString()
+
+    // Get controller and AP names for provenance
+    const { data: controller } = await supabaseAdmin
+      .from('omada_controllers')
+      .select('name')
+      .eq('id', transaction.controller_id)
+      .single()
+
+    const { data: ap } = transaction.access_point_id ? await supabaseAdmin
+      .from('access_points')
+      .select('ap_mac, name, model')
+      .eq('id', transaction.access_point_id)
+      .single() : { data: null }
+
+    // Store authorization with provenance
     const { error: authorizationError } = await supabaseAdmin
       .from('client_authorizations')
       .upsert({
         transaction_id: transaction.id,
         site_id: transaction.site_id,
+        controller_id: transaction.controller_id,
+        access_point_id: transaction.access_point_id,
         portal_session_id: transaction.portal_session_id,
         client_mac: portalSession.client_mac,
         ap_mac: portalSession.ap_mac,
@@ -292,11 +331,15 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
         duration_seconds: transaction.duration_seconds,
         authorized_at: authorizedAt,
         expires_at: expiresAt,
+        controller_name: controller?.name || null,
+        ap_mac_resolved: ap?.ap_mac || null,
+        ap_name: ap?.name || null,
         revoked_at: null,
         revoke_reason: null
       }, { onConflict: 'transaction_id' })
     if (authorizationError) throw authorizationError
 
+    // Update transaction with provenance
     const { error: transactionError } = await supabaseAdmin
       .from('payment_transactions')
       .update({
@@ -305,6 +348,11 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
         omada_voucher_group_id: voucher.groupId,
         authorized_at: authorizedAt,
         expires_at: expiresAt,
+        controller_name: controller?.name || null,
+        ap_mac_resolved: ap?.ap_mac || null,
+        ap_name: ap?.name || null,
+        ap_model: ap?.model || null,
+        omada_site_id_resolved: site?.omada_site_id || null,
         error_code: null,
         error_message: null
       })
@@ -325,7 +373,7 @@ async function handlePaymentSuccess(transaction: any, malipoReference: string, r
 
     console.log(JSON.stringify({
       level: 'info', event: 'CLIENT_AUTHORIZED', requestId,
-      reference: transaction.reference, voucherCode: voucher.code
+      reference: transaction.reference, voucherCode: voucher.code, controllerId: transaction.controller_id
     }))
 
   } catch (err) {

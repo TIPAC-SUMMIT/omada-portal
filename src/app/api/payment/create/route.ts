@@ -134,12 +134,41 @@ export async function POST(request: NextRequest) {
     // Generate unique reference and create transaction record BEFORE calling MalipoPay
     const reference = generateTransactionReference()
     const expiresAt = addMinutes(PAYMENT_TIMEOUT_MINUTES)
+    const { data: mappedController } = session.controller_id
+      ? await supabaseAdmin
+        .from('omada_controllers')
+        .select('id, name, cloud_api_omadac_id')
+        .eq('id', session.controller_id)
+        .maybeSingle()
+      : { data: null }
+    const { data: mappedAp } = session.access_point_id
+      ? await supabaseAdmin
+        .from('access_points')
+        .select('id, ap_mac, name, model')
+        .eq('id', session.access_point_id)
+        .maybeSingle()
+      : { data: null }
+    const { data: mappedSite } = session.site_id
+      ? await supabaseAdmin
+        .from('sites')
+        .select('omada_site_id')
+        .eq('id', session.site_id)
+        .maybeSingle()
+      : { data: null }
 
     const { data: transaction, error: transactionError } = await supabaseAdmin
       .from('payment_transactions')
       .insert({
         reference,
         site_id: session.site_id,
+        controller_id: session.controller_id || null,
+        access_point_id: session.access_point_id || null,
+        controller_name: mappedController?.name || null,
+        ap_mac_resolved: mappedAp?.ap_mac || null,
+        ap_name: mappedAp?.name || null,
+        ap_model: mappedAp?.model || null,
+        omada_site_id_resolved: mappedSite?.omada_site_id || null,
+        omada_account_id: mappedController?.cloud_api_omadac_id || null,
         package_id: session.selected_package_id,
         portal_session_id: session.id,
         client_mac: session.client_mac,

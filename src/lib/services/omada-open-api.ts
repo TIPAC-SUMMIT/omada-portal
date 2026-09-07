@@ -1,3 +1,8 @@
+/**
+ * Omada Open API client
+ * Supports per-controller configuration with global ENV fallback
+ */
+
 import { ENV } from '../constants'
 
 interface OmadaApiResponse<T> {
@@ -45,6 +50,27 @@ export interface OmadaVoucherAuthorization {
   voucherCode: string
 }
 
+// ============================================================================
+// Controller Configuration
+// ============================================================================
+
+export interface CloudApiConfig {
+  apiUrl: string
+  clientId: string
+  clientSecret: string
+  omadacId: string
+}
+
+export interface ControllerCredentials {
+  controllerUrl: string
+  controllerId: string
+  username: string
+  password: string
+}
+
+// Per-controller token caches to avoid cross-controller pollution
+const tokenCaches = new Map<string, { value: string; expiresAt: number } | null>()
+
 export function calculateOmadaVoucherDurationMinutes(durationSeconds: number): number {
   if (!Number.isInteger(durationSeconds) || durationSeconds < 60) {
     throw new Error('Omada authorization duration must be at least 60 seconds')
@@ -56,15 +82,52 @@ export function calculateOmadaExpiryMillis(_nowMillis: number, durationSeconds: 
   if (!Number.isInteger(durationSeconds) || durationSeconds < 60) {
     throw new Error('Omada authorization duration must be at least 60 seconds')
   }
-  // The controller's extPortal endpoint expects the session duration in
-  // milliseconds and adds it to the authorization start time.
   return durationSeconds * 1000
 }
 
-let tokenCache: { value: string; expiresAt: number } | null = null
+// ============================================================================
+// Fallback Configuration (legacy global ENV)
+// ============================================================================
 
-function apiUrl(path: string): string {
-  return `${ENV.OMADA_API_URL.replace(/\/$/, '')}${path}`
+/**
+ * Gets fallback cloud API config from environment
+ * Used when no controller-specific config is provided
+ */
+function getFallbackCloudApiConfig(): CloudApiConfig | null {
+  if (!ENV.OMADA_API_URL || !ENV.OMADA_CLIENT_ID || !ENV.OMADA_CLIENT_SECRET || !ENV.OMADA_OMADAC_ID) {
+    return null
+  }
+  return {
+    apiUrl: ENV.OMADA_API_URL,
+    clientId: ENV.OMADA_CLIENT_ID,
+    clientSecret: ENV.OMADA_CLIENT_SECRET,
+    omadacId: ENV.OMADA_OMADAC_ID
+  }
+}
+
+/**
+ * Gets fallback controller credentials from environment
+ * Used when no controller-specific config is provided
+ */
+function getFallbackControllerCredentials(): ControllerCredentials | null {
+  if (!ENV.OMADA_CONTROLLER_URL || !ENV.OMADA_CONTROLLER_ID ||
+      !ENV.OMADA_OPERATOR_USERNAME || !ENV.OMADA_OPERATOR_PASSWORD) {
+    return null
+  }
+  return {
+    controllerUrl: ENV.OMADA_CONTROLLER_URL,
+    controllerId: ENV.OMADA_CONTROLLER_ID,
+    username: ENV.OMADA_OPERATOR_USERNAME,
+    password: ENV.OMADA_OPERATOR_PASSWORD
+  }
+}
+
+// ============================================================================
+// API Request Helpers
+// ============================================================================
+
+function apiUrl(config: CloudApiConfig, path: string): string {
+  return `${config.apiUrl.replace(/\/$/, '')}${path}`
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -82,24 +145,23 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return body.result as T
 }
 
-async function getAccessToken(): Promise<string> {
-  if (tokenCache && tokenCache.expiresAt > Date.now() + 60_000) {
-    return tokenCache.value
-  }
+async function getAccessToken(config: CloudApiConfig): Promise<string> {
+  const cacheKey = `${config.omadacId}:${config.clientId}`
+  const cached = tokenCaches.get(cacheKey)
 
-  if (!ENV.OMADA_CLIENT_ID || !ENV.OMADA_CLIENT_SECRET || !ENV.OMADA_OMADAC_ID) {
-    throw new Error('OMADA_CLIENT_ID, OMADA_CLIENT_SECRET and OMADA_OMADAC_ID are required')
+  if (cached && cached.expiresAt > Date.now() + 60_000) {
+    return cached.value
   }
 
   const response = await fetch(
-    apiUrl('/openapi/authorize/token?grant_type=client_credentials'),
+    apiUrl(config, '/openapi/authorize/token?grant_type=client_credentials'),
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({
-        omadacId: ENV.OMADA_OMADAC_ID,
-        client_id: ENV.OMADA_CLIENT_ID,
-        client_secret: ENV.OMADA_CLIENT_SECRET,
+        omadacId: config.omadacId,
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
       }),
       signal: AbortSignal.timeout(15_000),
     }
@@ -108,28 +170,41 @@ async function getAccessToken(): Promise<string> {
   const token = await parseResponse<AccessToken>(response)
   if (!token?.accessToken) throw new Error('Omada API did not return an access token')
 
-  tokenCache = {
+  const tokenData = {
     value: token.accessToken,
     expiresAt: Date.now() + (token.expiresIn ?? 7200) * 1000,
   }
+
+  tokenCaches.set(cacheKey, tokenData)
   return token.accessToken
 }
+
+// ============================================================================
+// Cloud API: Voucher Management
+// ============================================================================
 
 export async function createOmadaVoucher(
   reference: string,
   durationSeconds: number,
-  siteId = ENV.OMADA_SITE_ID
+  siteId?: string,
+  config?: CloudApiConfig
 ): Promise<GeneratedVoucher> {
-  if (!siteId) {
+  const finalConfig = config || getFallbackCloudApiConfig()
+  if (!finalConfig) {
+    throw new Error('Cloud API configuration is required (from controller or global ENV)')
+  }
+
+  const finalSiteId = siteId || ENV.OMADA_SITE_ID
+  if (!finalSiteId) {
     throw new Error('An Omada site ID is required to generate vouchers')
   }
 
-  const token = await getAccessToken()
+  const token = await getAccessToken(finalConfig)
   const durationMinutes = calculateOmadaVoucherDurationMinutes(durationSeconds)
   const groupName = `TIPAC-${reference}`.slice(0, 32)
 
   const createResponse = await fetch(
-    apiUrl(`/openapi/v1/${encodeURIComponent(ENV.OMADA_OMADAC_ID)}/sites/${encodeURIComponent(siteId)}/hotspot/voucher-groups`),
+    apiUrl(finalConfig, `/openapi/v1/${encodeURIComponent(finalConfig.omadacId)}/sites/${encodeURIComponent(finalSiteId)}/hotspot/voucher-groups`),
     {
       method: 'POST',
       headers: {
@@ -163,7 +238,7 @@ export async function createOmadaVoucher(
   if (!created?.id) throw new Error('Omada API did not return a voucher group ID')
 
   const detailResponse = await fetch(
-    apiUrl(`/openapi/v1/${encodeURIComponent(ENV.OMADA_OMADAC_ID)}/sites/${encodeURIComponent(siteId)}/hotspot/voucher-groups/${encodeURIComponent(created.id)}?page=1&pageSize=10`),
+    apiUrl(finalConfig, `/openapi/v1/${encodeURIComponent(finalConfig.omadacId)}/sites/${encodeURIComponent(finalSiteId)}/hotspot/voucher-groups/${encodeURIComponent(created.id)}?page=1&pageSize=10`),
     {
       headers: {
         Authorization: `AccessToken=${token}`,
@@ -180,14 +255,15 @@ export async function createOmadaVoucher(
   return { groupId: created.id, code: voucher.code }
 }
 
-export async function listOmadaSites(): Promise<OmadaSite[]> {
-  if (!ENV.OMADA_OMADAC_ID) {
-    throw new Error('OMADA_OMADAC_ID is required to retrieve sites')
+export async function listOmadaSites(config?: CloudApiConfig): Promise<OmadaSite[]> {
+  const finalConfig = config || getFallbackCloudApiConfig()
+  if (!finalConfig) {
+    throw new Error('Cloud API configuration is required (from controller or global ENV)')
   }
 
-  const token = await getAccessToken()
+  const token = await getAccessToken(finalConfig)
   const response = await fetch(
-    apiUrl(`/openapi/v1/${encodeURIComponent(ENV.OMADA_OMADAC_ID)}/sites?page=1&pageSize=1000`),
+    apiUrl(finalConfig, `/openapi/v1/${encodeURIComponent(finalConfig.omadacId)}/sites?page=1&pageSize=1000`),
     {
       headers: {
         Authorization: `AccessToken=${token}`,
@@ -205,13 +281,18 @@ export async function listOmadaSites(): Promise<OmadaSite[]> {
   return result?.data ?? []
 }
 
+// ============================================================================
+// Controller API: Hotspot Authorization
+// ============================================================================
+
 async function controllerRequest<T>(
+  config: ControllerCredentials,
   path: string,
   init: RequestInit,
   cookies?: string
 ): Promise<{ data: T; cookies: string }> {
   const response = await fetch(
-    `${ENV.OMADA_CONTROLLER_URL.replace(/\/$/, '')}/${encodeURIComponent(ENV.OMADA_CONTROLLER_ID)}${path}`,
+    `${config.controllerUrl.replace(/\/$/, '')}/${encodeURIComponent(config.controllerId)}${path}`,
     {
       ...init,
       headers: {
@@ -238,19 +319,23 @@ async function controllerRequest<T>(
   return { data: body.result as T, cookies: [cookies, receivedCookies].filter(Boolean).join('; ') }
 }
 
-export async function authorizeOmadaClient(input: OmadaClientAuthorization): Promise<void> {
-  if (!ENV.OMADA_CONTROLLER_URL || !ENV.OMADA_CONTROLLER_ID ||
-      !ENV.OMADA_OPERATOR_USERNAME || !ENV.OMADA_OPERATOR_PASSWORD) {
-    throw new Error('OMADA_CONTROLLER_URL, OMADA_CONTROLLER_ID and hotspot operator credentials are required')
+export async function authorizeOmadaClient(
+  input: OmadaClientAuthorization,
+  config?: ControllerCredentials
+): Promise<void> {
+  const finalConfig = config || getFallbackControllerCredentials()
+  if (!finalConfig) {
+    throw new Error('Controller credentials are required (from controller or global ENV)')
   }
 
   const login = await controllerRequest<{ token: string }>(
+    finalConfig,
     '/api/v2/hotspot/login',
     {
       method: 'POST',
       body: JSON.stringify({
-        name: ENV.OMADA_OPERATOR_USERNAME,
-        password: ENV.OMADA_OPERATOR_PASSWORD,
+        name: finalConfig.username,
+        password: finalConfig.password,
       }),
     }
   )
@@ -258,6 +343,7 @@ export async function authorizeOmadaClient(input: OmadaClientAuthorization): Pro
 
   const durationMillis = calculateOmadaExpiryMillis(Date.now(), input.durationSeconds)
   await controllerRequest(
+    finalConfig,
     '/api/v2/hotspot/extPortal/auth',
     {
       method: 'POST',
@@ -276,28 +362,33 @@ export async function authorizeOmadaClient(input: OmadaClientAuthorization): Pro
   )
 }
 
-export async function authorizeOmadaVoucher(input: OmadaVoucherAuthorization): Promise<void> {
-  if (!ENV.OMADA_CONTROLLER_URL || !ENV.OMADA_CONTROLLER_ID ||
-      !ENV.OMADA_OPERATOR_USERNAME || !ENV.OMADA_OPERATOR_PASSWORD) {
-    throw new Error('OMADA_CONTROLLER_URL, OMADA_CONTROLLER_ID and hotspot operator credentials are required')
+export async function authorizeOmadaVoucher(
+  input: OmadaVoucherAuthorization,
+  config?: ControllerCredentials
+): Promise<void> {
+  const finalConfig = config || getFallbackControllerCredentials()
+  if (!finalConfig) {
+    throw new Error('Controller credentials are required (from controller or global ENV)')
   }
 
   const voucherCode = input.voucherCode.trim()
   if (!voucherCode) throw new Error('Voucher code is required')
 
   const login = await controllerRequest<{ token: string }>(
+    finalConfig,
     '/api/v2/hotspot/login',
     {
       method: 'POST',
       body: JSON.stringify({
-        name: ENV.OMADA_OPERATOR_USERNAME,
-        password: ENV.OMADA_OPERATOR_PASSWORD,
+        name: finalConfig.username,
+        password: finalConfig.password,
       }),
     }
   )
   if (!login.data?.token) throw new Error('Omada controller did not return a CSRF token')
 
   await controllerRequest(
+    finalConfig,
     '/api/v2/hotspot/extPortal/auth',
     {
       method: 'POST',

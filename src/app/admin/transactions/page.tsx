@@ -11,6 +11,10 @@ interface Transaction {
   created_at: string; authorized_at: string | null; expires_at: string | null
   malipopay_transaction_id: string | null; voucher_code: string | null
   error_code: string | null; error_message: string | null
+  controller_id: string | null; controller_name: string | null
+  ap_mac_resolved: string | null; ap_name: string | null; ap_model: string | null
+  omada_site_id_resolved: string | null; omada_account_id: string | null
+  omada_controllers: { name: string } | null
   sites: { name: string } | null
   packages: { name: string } | null
 }
@@ -115,7 +119,7 @@ export default function TransactionsPage() {
         <table className="w-full text-sm min-w-[800px]">
           <thead className="bg-gray-50 text-gray-600 text-left">
             <tr>
-              {['Reference','Site','Package','Phone','Amount','Status','Client MAC','Created','Expires','Details'].map(h => (
+              {['Reference','Site / Controller','EAP / AP','Package','Phone','Amount','Status','Created','Expires','Details'].map(h => (
                 <th key={h} className="px-4 py-3 font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -128,12 +132,18 @@ export default function TransactionsPage() {
             ) : rows.map(r => (
               <tr key={r.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openDetails(r)}>
                 <td className="px-4 py-3 font-mono text-xs text-gray-700">{r.reference}</td>
-                <td className="px-4 py-3 text-gray-500">{r.sites?.name ?? '—'}</td>
+                <td className="px-4 py-3 text-gray-500">
+                  <div>{r.sites?.name ?? '—'}</div>
+                  <div className="text-xs text-gray-400">{r.controller_name ?? r.omada_controllers?.name ?? 'Legacy controller'}</div>
+                </td>
+                <td className="px-4 py-3 text-gray-500">
+                  <div>{r.ap_name ?? r.ap_mac_resolved ?? r.client_mac}</div>
+                  {r.ap_model && <div className="text-xs text-gray-400">{r.ap_model}</div>}
+                </td>
                 <td className="px-4 py-3 text-gray-500">{r.packages?.name ?? '—'}</td>
                 <td className="px-4 py-3 font-mono text-xs">{r.phone_number}</td>
                 <td className="px-4 py-3 font-medium">{CURRENCY_FORMAT.format(r.amount_tzs)}</td>
                 <td className="px-4 py-3"><span className={STATUS_CLASS[r.status] || 'status-pending'}>{r.status}</span></td>
-                <td className="px-4 py-3 font-mono text-xs text-gray-500">{r.client_mac}</td>
                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmt(r.created_at)}</td>
                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.expires_at ? fmt(r.expires_at) : '—'}</td>
                 <td className="px-4 py-3 text-xs max-w-xs">
@@ -160,6 +170,10 @@ export default function TransactionsPage() {
               <div><span className="text-gray-500">Status</span><p>{selected.status}</p></div>
               <div><span className="text-gray-500">Amount</span><p>{CURRENCY_FORMAT.format(selected.amount_tzs)}</p></div>
               <div><span className="text-gray-500">Package</span><p>{selected.packages?.name ?? '—'}</p></div>
+              <div><span className="text-gray-500">Controller</span><p>{selected.controller_name ?? selected.omada_controllers?.name ?? 'Legacy controller'}</p></div>
+              <div><span className="text-gray-500">EAP / AP</span><p>{selected.ap_name ?? selected.ap_mac_resolved ?? '—'}</p></div>
+              <div><span className="text-gray-500">Omada site</span><p className="font-mono text-xs">{selected.omada_site_id_resolved ?? '—'}</p></div>
+              <div><span className="text-gray-500">Omada account</span><p className="font-mono text-xs">{selected.omada_account_id ?? '—'}</p></div>
               <div><span className="text-gray-500">Provider reference</span><p className="font-mono text-xs">{selected.malipopay_transaction_id ?? '—'}</p></div>
               <div><span className="text-gray-500">Voucher</span><p className="font-mono">{selected.voucher_code ?? '—'}</p></div>
               <div className="col-span-2"><span className="text-gray-500">Error</span><p className="text-red-600">{selected.error_message ?? '—'}</p></div>

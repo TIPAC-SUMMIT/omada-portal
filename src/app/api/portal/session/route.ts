@@ -8,6 +8,7 @@
 import { NextRequest } from 'next/server'
 import { createPortalSessionSchema } from '@/lib/validation'
 import { supabaseAdmin } from '@/lib/supabase'
+import { resolveSessionController } from '@/lib/services/controller-routing'
 import { 
   generateSecureToken, 
   hashSessionToken, 
@@ -17,7 +18,7 @@ import {
   validateRequestBody,
   logError
 } from '@/lib/utils'
-import { PORTAL_SESSION_EXPIRY_MINUTES, HTTP_STATUS } from '@/lib/constants'
+import { ENV, PORTAL_SESSION_EXPIRY_MINUTES, HTTP_STATUS } from '@/lib/constants'
 import type { Site, Package } from '@/lib/types'
 
 export async function GET(request: NextRequest) {
@@ -89,55 +90,59 @@ export async function POST(request: NextRequest) {
     const sessionTokenHash = hashSessionToken(sessionToken)
     const expiresAt = addMinutes(PORTAL_SESSION_EXPIRY_MINUTES)
 
-    // Match the captive-portal session to the configured Northbound site.
-    let site: Site | null = null
-    let sites: Site | null = null
-    if (params.site) {
-      const { data: omadaSite } = await supabaseAdmin
-        .from('sites')
-        .select('*')
-        .eq('name', params.site)
-        .eq('status', 'ACTIVE')
-        .maybeSingle()
-      sites = omadaSite
-      if (!sites) {
-        const { data: omadaSiteById } = await supabaseAdmin
-          .from('sites')
-          .select('*')
-          .eq('omada_site_id', params.site)
-          .eq('status', 'ACTIVE')
-          .maybeSingle()
-        sites = omadaSiteById
-      }
-    }
-    if (!params.site && !sites) {
-      const { data: configuredSite } = await supabaseAdmin
-        .from('sites')
-        .select('*')
-        .eq('omada_site_id', process.env.OMADA_SITE_ID || '')
-        .eq('status', 'ACTIVE')
-        .maybeSingle()
-      sites = configuredSite
-    }
+    // Resolve controller and access point using smart routing
+    const resolution = await resolveSessionController({
+      apMac: params.apMac,
+      siteIdentifier: params.site,
+      clientMac: params.clientMac
+    })
 
-    if (!sites) {
-      return Response.json(apiError('This Omada site is not configured in the portal', 'SITE_NOT_CONFIGURED'), {
+    if (resolution.ambiguous) {
+      logError(new Error(resolution.error || 'Ambiguous resolution'), 'Portal session resolution')
+      return Response.json(apiError(resolution.error || 'Portal access point is ambiguous', 'AMBIGUOUS_AP'), {
         status: HTTP_STATUS.BAD_REQUEST
       })
     }
-    
-    if (sites) {
-      site = sites
+
+    let site = resolution.site
+    let controller = resolution.controller?.id ? resolution.controller : null
+    const ap = resolution.ap
+
+    // Preserve the existing single-controller deployment until a controller
+    // record is configured for the site. A mapped controller is always preferred.
+    if (!controller?.id) {
+      const legacyQuery = supabaseAdmin
+        .from('sites')
+        .select('*')
+        .eq('status', 'ACTIVE')
+      const { data: byName } = params.site
+        ? await legacyQuery.eq('name', params.site).maybeSingle()
+        : { data: null }
+      const { data: byId } = !byName
+        ? await supabaseAdmin
+          .from('sites')
+          .select('*')
+          .eq('status', 'ACTIVE')
+          .eq('omada_site_id', params.site || ENV.OMADA_SITE_ID)
+          .maybeSingle()
+        : { data: null }
+      const legacySite = byName || byId
+      if (legacySite) site = legacySite
+      if (!site?.id && !ENV.OMADA_SITE_ID) {
+        return Response.json(apiError('This Omada site is not configured in the portal', 'SITE_NOT_CONFIGURED'), {
+          status: HTTP_STATUS.BAD_REQUEST
+        })
+      }
     }
 
-    // Get available packages for this site (or all if no site match)
+    // Get available packages for this site
     let packagesQuery = supabaseAdmin
       .from('packages')
       .select('*')
       .eq('status', 'ACTIVE')
       .order('sort_order')
 
-    if (site) {
+    if (site?.id) {
       // Get packages assigned to this site
       const { data: sitePackages } = await supabaseAdmin
         .from('site_packages')
@@ -157,16 +162,18 @@ export async function POST(request: NextRequest) {
       throw new Error(`Failed to load packages: ${packagesError.message}`)
     }
 
-    // Create portal session record
+    // Create portal session record with controller and AP tracking
     const { error: sessionError } = await supabaseAdmin
       .from('portal_sessions')
       .insert({
         session_token_hash: sessionTokenHash,
         site_id: site?.id || null,
+        controller_id: controller?.id || null,
+        access_point_id: ap?.id || null,
         client_mac: params.clientMac,
         ap_mac: params.apMac,
         ssid_name: params.ssidName,
-        site_name: sites.name,
+        site_name: site?.name || params.site || null,
         portal_timestamp: params.t || null,
         gateway_mac: params.gatewayMac || null,
         radio_id: params.radioId || null,

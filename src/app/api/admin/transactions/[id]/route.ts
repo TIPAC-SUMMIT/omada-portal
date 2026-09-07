@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { requireAdmin, canAccessSite } from '@/lib/auth'
 import { authorizeOmadaClient, createOmadaVoucher } from '@/lib/services/omada-open-api'
+import { getControllerCloudApiConfig, getControllerOperatorCredentials } from '@/lib/services/controller-routing'
 import { apiError, apiSuccess, logError } from '@/lib/utils'
 import { HTTP_STATUS } from '@/lib/constants'
 
@@ -78,9 +79,27 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       let voucherGroupId = transaction.omada_voucher_group_id
       if (!voucherCode) {
         const { data: site } = await supabaseAdmin.from('sites').select('omada_site_id').eq('id', transaction.site_id).maybeSingle()
-        const voucher = await createOmadaVoucher(transaction.reference, transaction.duration_seconds, site?.omada_site_id ?? undefined)
+        const cloudConfig = transaction.controller_id
+          ? await getControllerCloudApiConfig(transaction.controller_id)
+          : undefined
+        if (transaction.controller_id && !cloudConfig) {
+          throw new Error('Controller cloud API not configured')
+        }
+        const voucher = await createOmadaVoucher(
+          transaction.reference,
+          transaction.duration_seconds,
+          site?.omada_site_id ?? undefined,
+          cloudConfig || undefined
+        )
         voucherCode = voucher.code
         voucherGroupId = voucher.groupId
+      }
+
+      const operatorCredentials = transaction.controller_id
+        ? await getControllerOperatorCredentials(transaction.controller_id)
+        : undefined
+      if (transaction.controller_id && !operatorCredentials) {
+        throw new Error('Controller operator credentials not configured')
       }
 
       await authorizeOmadaClient({
@@ -90,13 +109,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         radioId: session.radio_id,
         site: session.site_name,
         durationSeconds: transaction.duration_seconds
-      })
+      }, operatorCredentials || undefined)
 
       const authorizedAt = new Date()
       const expiresAt = new Date(authorizedAt.getTime() + transaction.duration_seconds * 1000)
       const { error: authError } = await supabaseAdmin.from('client_authorizations').upsert({
         transaction_id: transaction.id,
         site_id: transaction.site_id,
+        controller_id: transaction.controller_id,
+        access_point_id: transaction.access_point_id,
         portal_session_id: transaction.portal_session_id,
         client_mac: session.client_mac,
         ap_mac: session.ap_mac,

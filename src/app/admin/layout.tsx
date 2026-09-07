@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, MapPin, Package, CreditCard, Monitor, ClipboardList, LogOut, Menu, X, Wifi } from 'lucide-react'
+import { LayoutDashboard, MapPin, Package, CreditCard, Monitor, ClipboardList, LogOut, Menu, X, Wifi, Radio } from 'lucide-react'
 
 const navItems = [
   { href: '/admin/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/sites',        icon: MapPin,           label: 'Sites' },
+  { href: '/admin/controllers',  icon: Wifi,             label: 'Controllers' },
+  { href: '/admin/access-points', icon: Radio,           label: 'EAP / Access Points' },
   { href: '/admin/packages',     icon: Package,          label: 'Packages' },
   { href: '/admin/transactions', icon: CreditCard,       label: 'Transactions' },
   { href: '/admin/sessions',     icon: Monitor,          label: 'Active Sessions' },
@@ -78,7 +80,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Wifi className="w-5 h-5 text-brand-300" />
           </div>
           <div className="min-w-0">
-            <p className="text-white font-bold text-sm leading-tight">TIPAC SUMMIT</p>
+            <p className="text-white font-bold text-sm leading-tight">KASI Wi-Fi</p>
             <p className="text-brand-400 text-xs">Wi-Fi Platform</p>
           </div>
           <button className="ml-auto lg:hidden text-brand-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
