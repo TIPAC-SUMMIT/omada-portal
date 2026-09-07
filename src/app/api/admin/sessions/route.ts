@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
       .eq('status', 'ACTIVE')
       .gt('expires_at', new Date().toISOString())
       .order('authorized_at', { ascending: false })
-      .limit(200)
 
     if (admin.role === 'SITE_ADMIN') {
       if (!admin.sites?.length) return Response.json(apiSuccess([]))
@@ -23,10 +22,12 @@ export async function GET(request: NextRequest) {
     }
     const controllerId = request.nextUrl.searchParams.get('controller_id')
     const accessPointId = request.nextUrl.searchParams.get('access_point_id')
+    const page = Math.max(1, Number(request.nextUrl.searchParams.get('page') ?? '1'))
+    const limit = Math.min(50, Math.max(1, Number(request.nextUrl.searchParams.get('limit') ?? '20')))
     if (controllerId) query = query.eq('controller_id', controllerId)
     if (accessPointId) query = query.eq('access_point_id', accessPointId)
 
-    const { data, error } = await query
+    const { data, error } = await query.range((page - 1) * limit, page * limit - 1)
     if (error) throw error
 
     let paymentQuery = supabaseAdmin
@@ -34,14 +35,13 @@ export async function GET(request: NextRequest) {
       .select('id,reference,status,client_mac,ap_mac,ssid_name,amount_tzs,phone_number,created_at,error_code,error_message,controller_id,access_point_id,controller_name,ap_mac_resolved,ap_name,sites!payment_transactions_site_id_fkey(name),packages!payment_transactions_package_id_fkey(name)')
       .in('status', ['PENDING', 'PAYMENT_INITIATED', 'PAYMENT_SUCCESS', 'OMADA_AUTHORIZING', 'AUTHORIZATION_FAILED'])
       .order('created_at', { ascending: false })
-      .limit(200)
     if (admin.role === 'SITE_ADMIN') {
       if (!admin.sites?.length) return Response.json(apiSuccess([]))
       paymentQuery = paymentQuery.in('site_id', admin.sites)
     }
     if (controllerId) paymentQuery = paymentQuery.eq('controller_id', controllerId)
     if (accessPointId) paymentQuery = paymentQuery.eq('access_point_id', accessPointId)
-    const { data: payments, error: paymentError } = await paymentQuery
+    const { data: payments, error: paymentError } = await paymentQuery.range((page - 1) * limit, page * limit - 1)
     if (paymentError) throw paymentError
 
     // Flatten nested package name
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       payment_transactions: undefined
     }))
 
-    return Response.json(apiSuccess([
+    const combined = [
       ...rows.map((row: any) => ({ ...row, record_type: 'AUTHORIZATION' })),
       ...(payments ?? []).map((payment: any) => ({
         ...payment,
@@ -63,7 +63,12 @@ export async function GET(request: NextRequest) {
         sites: payment.sites,
         packages: payment.packages
       }))
-    ]))
+    ]
+    return Response.json({
+      success: true,
+      data: combined,
+      pagination: { page, limit, hasNextPage: combined.length === limit }
+    })
   } catch (e) {
     logError(e, 'GET /admin/sessions')
     return Response.json(apiError('Failed to load sessions'), { status: HTTP_STATUS.INTERNAL_SERVER_ERROR })
