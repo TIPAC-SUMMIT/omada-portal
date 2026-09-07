@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, RefreshCw, Zap, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Plus, Pencil, Trash2, RefreshCw, Zap, CheckCircle, XCircle, AlertCircle, Download } from 'lucide-react'
 import type { OmadaController } from '@/lib/types'
 
 interface Controller extends OmadaController {
@@ -32,6 +32,7 @@ export default function ControllersPage() {
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState<string | null>(null)
   const [syncing, setSyncing] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -173,6 +174,26 @@ export default function ControllersPage() {
     } finally {
       setSyncing(null)
     }
+
+  }
+
+  const importCurrent = async () => {
+    setImporting(true)
+    try {
+      const res = await fetch('/api/admin/controllers/import-legacy', {
+        method: 'POST',
+        headers: { Authorization: `******'admin_token')}` }
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error)
+      alert(`${data.data.message}: ${data.data.site_name}`)
+      await load()
+      await loadSites()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Import failed')
+    } finally {
+      setImporting(false)
+    }
   }
 
   const statusIcon = (c: Controller) => {
@@ -186,9 +207,14 @@ export default function ControllersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Controllers</h1>
-        <button onClick={openNew} className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add Controller
-        </button>
+        <div className="flex gap-2">
+          <button onClick={importCurrent} disabled={importing} className="btn-secondary py-2 px-4 text-sm flex items-center gap-2">
+            <Download className="w-4 h-4" /> {importing ? 'Importing…' : 'Import current controller'}
+          </button>
+          <button onClick={openNew} className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Add Controller
+          </button>
+        </div>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">{error}</div>}
